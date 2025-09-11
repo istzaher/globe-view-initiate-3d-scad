@@ -277,8 +277,15 @@ export class NLPQueryService {
           if (this.view) {
             this.abuDhabiRealDataService.setView(this.view);
             console.log('⏳ Loading real datasets...');
-            await this.abuDhabiRealDataService.loadRealDatasets();
-            console.log('✅ Real datasets loaded successfully');
+            try {
+              await this.abuDhabiRealDataService.loadRealDatasets();
+              console.log('✅ Real datasets loaded successfully');
+              console.log('📊 Available layers after loading:', this.abuDhabiRealDataService.getLoadedLayers().length);
+            } catch (loadError) {
+              console.error('❌ Error loading real datasets:', loadError);
+            }
+          } else {
+            console.error('❌ No map view available for AbuDhabiRealDataService');
           }
         }
         
