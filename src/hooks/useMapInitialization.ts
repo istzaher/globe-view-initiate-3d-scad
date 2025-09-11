@@ -84,6 +84,14 @@ export function useMapInitialization() {
         (window as any).esriView = view;
         console.log(`🗺️ Initial basemap: ${currentBasemap}`);
         console.log('🌐 View available globally as window.esriView');
+        
+        // Initialize feature layer system
+        if ((window as any).initializeFeatureLayers) {
+          console.log('🚀 Calling initializeFeatureLayers...');
+          (window as any).initializeFeatureLayers(view);
+        } else {
+          console.warn('⚠️ initializeFeatureLayers not available');
+        }
       }, (error: Error) => {
         console.error('❌ Failed to initialize map view:', error);
         setMapError(`Failed to initialize map view: ${error.message}`);
