@@ -10,7 +10,6 @@ import { useMapInitialization } from '@/hooks/useMapInitialization';
 import { useNLQuery } from '@/hooks/useNLQuery';
 import NLPQueryService from '@/services/nlpQueryService';
 import GeodatabaseService from '@/services/geodatabaseService';
-import DemoLayerService from '@/services/demoLayerService';
 import AbuDhabiRealDataService from '@/services/abuDhabiRealDataService';
 import EsriMapTools from './EsriMapTools';
 
@@ -21,7 +20,6 @@ const MapViewer = () => {
   const [highlightGraphic, setHighlightGraphic] = useState<any>(null);
   const [nlpQueryService] = useState(() => new NLPQueryService());
   const [geodatabaseService] = useState(() => new GeodatabaseService());
-  const [demoLayerService] = useState(() => new DemoLayerService());
   const [abuDhabiRealDataService] = useState(() => new AbuDhabiRealDataService());
   const [featureResults, setFeatureResults] = useState<any[]>([]);
   const [visibleLayers, setVisibleLayers] = useState<string[]>([]);
@@ -126,7 +124,6 @@ const MapViewer = () => {
         console.log('🗃️ Setting up feature layer system...');
         nlpQueryService.setMapView(view);
         geodatabaseService.setMapView(view);
-        demoLayerService.setMapView(view);
         abuDhabiRealDataService.setView(view);
         
         // Connect services together
@@ -138,10 +135,9 @@ const MapViewer = () => {
           geodatabaseService.loadGeodatabaseConfig().then(() => 
             geodatabaseService.loadGeodatabaseLayers()
           ),
-          demoLayerService.createDemoLayers(),
           abuDhabiRealDataService.loadRealDatasets()
         ]).then(() => {
-          console.log('✅ Feature layer system, geodatabase, demo layers, and real Abu Dhabi data ready');
+          console.log('✅ Feature layer system, geodatabase, and real Abu Dhabi data ready');
         }).catch(error => {
           console.error('❌ Error initializing layers:', error);
         });
