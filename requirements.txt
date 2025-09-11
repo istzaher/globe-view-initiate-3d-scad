@@ -23,4 +23,7 @@ spacy>=3.4.0,<4.0.0
 spacy-transformers>=1.1.0
 
 # Additional dependencies for proper functionality
-typing-extensions>=4.0.0 
+typing-extensions>=4.0.0
+
+# OpenAI client for LLM integration via OpenRouter
+openai>=1.0.0 

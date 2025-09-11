@@ -1,9 +1,11 @@
 /**
  * GenAI Chatbot Service for SCAD GenAI Tool
  * Provides intelligent conversational capabilities with context awareness
+ * Now powered by ChatGPT-4o via OpenRouter
  */
 
 import { conversationMemoryService, ConversationMessage, FollowUpSuggestion } from './conversationMemoryService';
+import { llmService } from './llmService';
 
 export interface ChatbotResponse {
   message: string;
@@ -143,8 +145,13 @@ class GenAIChatbotService {
     
     // Handle greetings and initial queries
     if (this.isGreeting(message)) {
+      const llmResponse = await llmService.generateResponse(
+        message,
+        `User is greeting the SCAD GenAI Assistant. Previous conversation: ${context.messages?.slice(-2).map((m: any) => m.content).join(', ') || 'None'}`
+      );
+      
       return {
-        message: `Hello! I'm the SCAD GenAI Assistant. I can help you analyze Abu Dhabi's spatial data including education, public safety, and agriculture datasets. I can also assist with Abu Dhabi District Pulse livability indicators. What would you like to explore?`,
+        message: llmResponse.success ? llmResponse.message : `Hello! I'm the SCAD GenAI Assistant. I can help you analyze Abu Dhabi's spatial data including bus stops, mosques, parks, and other infrastructure. What would you like to explore?`,
         type: 'suggestion',
         followUpSuggestions: conversationMemoryService.generateFollowUpSuggestions(context.sessionId)
       };
@@ -196,13 +203,25 @@ class GenAIChatbotService {
       return this.handleFollowUpQuery(message, context, processedQuery);
     }
     
-    // Default response for general queries
+    // Default response for general queries using LLM
+    const conversationContext = context.messages?.slice(-3).map((m: any) => `${m.type}: ${m.content}`).join('\n') || 'No previous conversation';
+    
+    const llmResponse = await llmService.generateResponse(
+      message,
+      conversationContext,
+      `You are helping a user with Abu Dhabi spatial data analysis. The user asked: "${message}". 
+      
+      Available real datasets: bus stops, mosques, parks, buildings, parking areas, roads.
+      
+      Provide a helpful response and suggest specific queries they could try with the real Abu Dhabi data.`
+    );
+    
     return {
-      message: `I understand you're asking about "${message}". Let me help you with that. Could you be more specific about what you'd like to explore? For example:\n\n• "Show me all schools in Abu Dhabi"\n• "Analyze healthcare accessibility"\n• "Find agricultural areas near water sources"`,
+      message: llmResponse.success ? llmResponse.message : `I understand you're asking about "${message}". Let me help you with that. You can try queries like "Show bus stops in Abu Dhabi" or "Find mosques near city center".`,
       type: 'suggestion',
       metadata: {
         queryType: 'general',
-        confidence: 0.7
+        confidence: llmResponse.success ? 0.9 : 0.7
       }
     };
   }

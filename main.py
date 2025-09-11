@@ -14,12 +14,23 @@ import time
 import os
 from pathlib import Path
 from typing import Optional, List, Dict, Any
+from dotenv import load_dotenv
+import openai
+
+# Load environment variables
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+# Configure OpenRouter client
+openai_client = openai.OpenAI(
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+    base_url="https://openrouter.ai/api/v1"
+)
 
 # Add CORS middleware - Allow frontend on ports 3000-3010 and legacy 8080
 cors_origins = [
@@ -74,6 +85,16 @@ class AuthRequest(BaseModel):
     username: str
     password: str
     server_url: str
+
+class LLMRequest(BaseModel):
+    message: str
+    context: Optional[str] = ""
+    systemPrompt: Optional[str] = ""
+
+class LLMResponse(BaseModel):
+    message: str
+    success: bool
+    error: Optional[str] = None
 
 # SCAD GenAI Tool - Enhanced dataset configuration for POC demonstration
 # Agriculture, Education, and Public Safety datasets with advanced spatial analysis capabilities
@@ -1181,6 +1202,79 @@ async def clear_conversation(session_id: str):
     except Exception as e:
         logger.error(f"Clear conversation error: {e}")
         return {"message": "Error clearing conversation"}
+
+@app.post("/api/llm/generate", response_model=LLMResponse)
+async def generate_llm_response(request: LLMRequest):
+    """
+    Generate response using ChatGPT-4o via OpenRouter
+    """
+    try:
+        logger.info(f"🤖 LLM request: {request.message[:100]}...")
+        
+        # Prepare messages for OpenAI API
+        messages = []
+        
+        # Add system prompt if provided
+        if request.systemPrompt:
+            messages.append({
+                "role": "system",
+                "content": request.systemPrompt
+            })
+        else:
+            # Default SCAD system prompt
+            messages.append({
+                "role": "system", 
+                "content": """You are the SCAD GenAI Assistant for Abu Dhabi Statistics Centre.
+                
+You specialize in:
+- Abu Dhabi GIS and spatial data analysis
+- Infrastructure and urban planning insights
+- Abu Dhabi District Pulse livability indicators
+- Real-time spatial queries and data interpretation
+
+You have access to real Abu Dhabi datasets including bus stops, mosques, parks, buildings, parking, and roads.
+
+Provide helpful, accurate responses focused on Abu Dhabi's spatial data. Keep responses professional but conversational."""
+            })
+        
+        # Add context if provided
+        if request.context:
+            messages.append({
+                "role": "assistant",
+                "content": f"Context: {request.context}"
+            })
+        
+        # Add user message
+        messages.append({
+            "role": "user",
+            "content": request.message
+        })
+        
+        # Call OpenRouter API
+        response = openai_client.chat.completions.create(
+            model=os.getenv("OPENROUTER_MODEL", "openai/gpt-4o"),
+            messages=messages,
+            max_tokens=500,
+            temperature=0.7
+        )
+        
+        # Extract response
+        ai_message = response.choices[0].message.content
+        
+        logger.info("✅ LLM response generated successfully")
+        
+        return LLMResponse(
+            message=ai_message,
+            success=True
+        )
+        
+    except Exception as e:
+        logger.error(f"LLM generation error: {e}")
+        return LLMResponse(
+            message="I apologize, but I encountered an error processing your request. Please try again.",
+            success=False,
+            error=str(e)
+        )
 
 def analyze_query_type(message: str) -> str:
     """Analyze the type of query being asked"""
