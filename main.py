@@ -26,11 +26,27 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-# Configure OpenRouter client
-openai_client = openai.OpenAI(
-    api_key=os.getenv("OPENROUTER_API_KEY"),
-    base_url="https://openrouter.ai/api/v1"
-)
+# Configure OpenRouter client - initialize lazily to avoid startup issues
+openai_client = None
+
+def get_openai_client():
+    global openai_client
+    if openai_client is None:
+        try:
+            api_key = os.getenv("OPENROUTER_API_KEY")
+            if api_key:
+                openai_client = openai.OpenAI(
+                    api_key=api_key,
+                    base_url="https://openrouter.ai/api/v1"
+                )
+                logger.info("✅ OpenRouter client initialized successfully")
+            else:
+                logger.warning("⚠️ OPENROUTER_API_KEY not found")
+                return None
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize OpenRouter client: {e}")
+            return None
+    return openai_client
 
 # Add CORS middleware - Allow frontend on ports 3000-3010 and legacy 8080
 cors_origins = [
@@ -1250,8 +1266,17 @@ Provide helpful, accurate responses focused on Abu Dhabi's spatial data. Keep re
             "content": request.message
         })
         
+        # Get OpenAI client
+        client = get_openai_client()
+        if not client:
+            return LLMResponse(
+                message="LLM service is currently unavailable. Please check the API configuration.",
+                success=False,
+                error="OpenAI client not initialized"
+            )
+        
         # Call OpenRouter API
-        response = openai_client.chat.completions.create(
+        response = client.chat.completions.create(
             model=os.getenv("OPENROUTER_MODEL", "openai/gpt-4o"),
             messages=messages,
             max_tokens=500,
