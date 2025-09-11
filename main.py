@@ -1196,6 +1196,72 @@ def analyze_query_type(message: str) -> str:
     else:
         return 'general'
 
+def format_attribute_analysis(attribute_breakdown: dict) -> str:
+    """Format attribute analysis data for LLM consumption"""
+    if not attribute_breakdown or not isinstance(attribute_breakdown, dict):
+        return "No detailed attribute analysis available."
+    
+    formatted_lines = []
+    
+    # Add summary if available
+    if 'summary' in attribute_breakdown:
+        formatted_lines.append(f"Summary: {attribute_breakdown['summary']}")
+    
+    # Building-specific analysis
+    if 'buildingTypes' in attribute_breakdown and attribute_breakdown['buildingTypes']:
+        types_str = ", ".join([f"{count} {btype}" for btype, count in attribute_breakdown['buildingTypes'].items()])
+        formatted_lines.append(f"Building Types: {types_str}")
+    
+    if 'amenityTypes' in attribute_breakdown and attribute_breakdown['amenityTypes']:
+        amenities_str = ", ".join([f"{count} {amenity}" for amenity, count in attribute_breakdown['amenityTypes'].items()])
+        formatted_lines.append(f"Amenity Types: {amenities_str}")
+    
+    if 'levelDistribution' in attribute_breakdown and attribute_breakdown['levelDistribution']:
+        levels_str = ", ".join([f"{count} buildings with {level_range}" for level_range, count in attribute_breakdown['levelDistribution'].items()])
+        formatted_lines.append(f"Height Distribution: {levels_str}")
+    
+    if 'namedBuildings' in attribute_breakdown and attribute_breakdown['namedBuildings']:
+        buildings_str = ", ".join(attribute_breakdown['namedBuildings'])
+        formatted_lines.append(f"Notable Buildings: {buildings_str}")
+    
+    # Mosque-specific analysis
+    if 'namedMosques' in attribute_breakdown and attribute_breakdown['namedMosques']:
+        mosques_str = ", ".join(attribute_breakdown['namedMosques'])
+        formatted_lines.append(f"Notable Mosques: {mosques_str}")
+    
+    if 'denominations' in attribute_breakdown and attribute_breakdown['denominations']:
+        denom_str = ", ".join([f"{count} {denom}" for denom, count in attribute_breakdown['denominations'].items()])
+        formatted_lines.append(f"Denominations: {denom_str}")
+    
+    # Bus stop analysis
+    if 'namedStops' in attribute_breakdown and attribute_breakdown['namedStops']:
+        stops_str = ", ".join(attribute_breakdown['namedStops'])
+        formatted_lines.append(f"Notable Bus Stops: {stops_str}")
+    
+    if 'operators' in attribute_breakdown and attribute_breakdown['operators']:
+        operators_str = ", ".join([f"{count} stops by {operator}" for operator, count in attribute_breakdown['operators'].items()])
+        formatted_lines.append(f"Operators: {operators_str}")
+    
+    # Park analysis
+    if 'namedParks' in attribute_breakdown and attribute_breakdown['namedParks']:
+        parks_str = ", ".join(attribute_breakdown['namedParks'])
+        formatted_lines.append(f"Notable Parks: {parks_str}")
+    
+    if 'parkTypes' in attribute_breakdown and attribute_breakdown['parkTypes']:
+        types_str = ", ".join([f"{count} {park_type}" for park_type, count in attribute_breakdown['parkTypes'].items()])
+        formatted_lines.append(f"Park Types: {types_str}")
+    
+    # Parking analysis
+    if 'namedParking' in attribute_breakdown and attribute_breakdown['namedParking']:
+        parking_str = ", ".join(attribute_breakdown['namedParking'])
+        formatted_lines.append(f"Notable Parking Areas: {parking_str}")
+    
+    if 'parkingTypes' in attribute_breakdown and attribute_breakdown['parkingTypes']:
+        types_str = ", ".join([f"{count} {parking_type}" for parking_type, count in attribute_breakdown['parkingTypes'].items()])
+        formatted_lines.append(f"Parking Types: {types_str}")
+    
+    return "\n".join(formatted_lines) if formatted_lines else "No specific attribute details available."
+
 def generate_chatbot_response(message: str, query_type: str, context: dict, request: ChatbotRequest) -> dict:
     """Generate contextual chatbot response"""
     lower_message = message.lower()
@@ -1215,29 +1281,51 @@ def generate_chatbot_response(message: str, query_type: str, context: dict, requ
                         "role": "system",
                         "content": """You are the SCAD GenAI Assistant specialized in Abu Dhabi spatial data analysis. 
 
-CRITICAL: When spatial data is provided, you MUST provide statistical summaries in this format:
+CRITICAL: When spatial data is provided, you MUST provide comprehensive statistical summaries with detailed breakdowns.
+
+FORMAT: Start with overall statistics, then provide detailed attribute analysis when available.
+
+BASIC FORMAT:
 "Found [X] [feature_type] out of [total] total features ([percentage]%). [Additional context about the results]"
 
-For example:
-- "Found 76 bus stops out of 76 total features (100.0%). These are all the ITC public transit stops currently available in Abu Dhabi."
-- "Found 35 mosques out of 35 total features (100.0%). This represents all Islamic places of worship and prayer facilities in the dataset."
-- "Found 160 buildings out of 1350 total buildings (11.9%). These are buildings with more than 16 levels, representing the high-rise structures in Abu Dhabi."
-- "Found 15 parks out of 15 total features (100.0%). These represent all public parks, green spaces, and recreational areas available in Abu Dhabi."
-- "Found 91 parking areas out of 91 total features (100.0%). These represent all parking facilities and lots throughout Abu Dhabi city."
+ENHANCED FORMAT (when attributeAnalysis is provided):
+"Found [X] [feature_type] out of [total] total features ([percentage]%). [Additional context]
 
-Always include the statistics and provide meaningful context about what the results represent."""
+**Detailed Breakdown:**
+- [Attribute categories with counts]
+- [Named examples if available]
+- [Level distributions for buildings]
+- [Any other relevant attribute analysis]"
+
+EXAMPLES:
+
+Basic: "Found 76 bus stops out of 76 total features (100.0%). These are all the ITC public transit stops currently available in Abu Dhabi."
+
+Enhanced: "Found 1,398 buildings out of 1,398 total features (100.0%). This represents the complete building infrastructure dataset for Abu Dhabi.
+
+**Building Analysis:**
+- **Building Types:** 45 office buildings, 23 hotels, 67 residential complexes, 12 commercial centers
+- **Amenity Categories:** 15 marketplaces, 8 restaurants, 5 banks, 12 shops
+- **Height Distribution:** 234 low-rise (1-2 levels), 156 mid-rise (3-10 levels), 45 high-rise (11+ levels)
+- **Notable Buildings:** ADNOC Drilling Head Office, Emirates Palace Hotel, Corniche Mall"
+
+Always use the provided attributeAnalysis data to create detailed, informative responses that help users understand the composition and characteristics of the spatial data."""
                     }
                 ]
                 
                 # Add spatial context as a system message
                 spatial_summary = request.spatialContext.get('spatialSummary', '')
                 query_results = request.spatialContext.get('queryResults', {})
+                attribute_breakdown = request.spatialContext.get('attributeBreakdown', {})
                 
                 spatial_message = f"""SPATIAL QUERY RESULTS:
 Query: {message}
 Results: {spatial_summary}
 Details: {query_results.get('features', 0)} features found out of {query_results.get('totalFeatures', 0)} total features ({query_results.get('percentage', '0')}%)
-Dataset: {query_results.get('layerType', 'unknown')} ({query_results.get('queryType', 'general')} query)"""
+Dataset: {query_results.get('layerType', 'unknown')} ({query_results.get('queryType', 'general')} query)
+
+ATTRIBUTE ANALYSIS:
+{format_attribute_analysis(attribute_breakdown)}"""
                 
                 logger.info(f"📊 ADDING SPATIAL MESSAGE TO LLM: {spatial_message}")
                 

@@ -248,6 +248,16 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
           
           if (nlpResult && nlpResult.statistics) {
             console.log('✅ STATISTICS FOUND IN NLP RESULT:', nlpResult.statistics);
+            
+            // Build enhanced spatial context with attribute analysis
+            const attributeAnalysis = nlpResult.statistics.attributeAnalysis;
+            let detailedSummary = `Found ${nlpResult.statistics.matchingFeatures} features out of ${nlpResult.statistics.totalFeatures} total features (${nlpResult.statistics.percentage}%). Dataset: ${nlpResult.statistics.layerType}.`;
+            
+            // Add attribute analysis summary if available
+            if (attributeAnalysis && attributeAnalysis.summary) {
+              detailedSummary += ` ${attributeAnalysis.summary}`;
+            }
+            
             spatialContext = {
               queryResults: {
                 features: nlpResult.features?.length || 0,
@@ -255,9 +265,11 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
                 matchingFeatures: nlpResult.statistics.matchingFeatures,
                 percentage: nlpResult.statistics.percentage,
                 layerType: nlpResult.statistics.layerType,
-                queryType: nlpResult.statistics.queryType
+                queryType: nlpResult.statistics.queryType,
+                attributeAnalysis: attributeAnalysis
               },
-              spatialSummary: `Found ${nlpResult.statistics.matchingFeatures} features out of ${nlpResult.statistics.totalFeatures} total features (${nlpResult.statistics.percentage}%). Dataset: ${nlpResult.statistics.layerType}.`
+              spatialSummary: detailedSummary,
+              attributeBreakdown: attributeAnalysis
             };
             console.log('📊 SPATIAL CONTEXT FOR LLM:', spatialContext);
             console.log('🚀 SENDING SPATIAL CONTEXT TO BACKEND...');

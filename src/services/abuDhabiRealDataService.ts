@@ -503,9 +503,11 @@ export class AbuDhabiRealDataService {
       
       // Handle analytical queries for building levels
       if (layerId === 'buildings_real' && whereClause.includes('levels')) {
-        whereClause = this.parseAnalyticalQuery(whereClause);
+        console.log(`📊 Analytical query detected: "${whereClause}"`);
+        const parsedWhereClause = this.parseAnalyticalQuery(whereClause);
+        console.log(`🏗️ Parsed to SQL: "${parsedWhereClause}"`);
+        whereClause = parsedWhereClause;
         isAnalyticalQuery = true;
-        console.log(`🏗️ Enhanced building levels query: ${whereClause}`);
       }
       
       const queryResult = await layer.queryFeatures({
@@ -557,15 +559,19 @@ export class AbuDhabiRealDataService {
         const queryType = (layerId === 'buildings_real' && isAnalyticalQuery) ? 'analytical' : 'general';
         
         // Add statistics to the query result for use in chat responses
+        // Perform detailed attribute analysis
+        const attributeAnalysis = this.analyzeFeatureAttributes(layerId, queryResult.features || [], totalFeatures);
+        
         queryResult.statistics = {
           totalFeatures: totalFeatures,
           matchingFeatures: matchingFeatures,
           percentage: percentage,
           queryType: queryType,
-          layerType: layerId.replace('_real', '')
+          layerType: layerId.replace('_real', ''),
+          attributeAnalysis: attributeAnalysis
         };
         
-        console.log(`📊 ADDED STATISTICS TO QUERY RESULT FOR ${layerId}:`, queryResult.statistics);
+        console.log(`📊 ADDED ENHANCED STATISTICS TO QUERY RESULT FOR ${layerId}:`, queryResult.statistics);
         
         // Debug building level data for analytical queries
         if (layerId === 'buildings_real' && isAnalyticalQuery) {
@@ -596,6 +602,8 @@ export class AbuDhabiRealDataService {
   }
 
   private parseAnalyticalQuery(whereClause: string): string {
+    console.log(`🔍 PARSING ANALYTICAL QUERY: "${whereClause}"`);
+    
     // Parse building level queries like "more than 16 levels"
     const levelPatterns = [
       { pattern: /more than (\d+) levels?/i, operator: '>' },
@@ -609,14 +617,20 @@ export class AbuDhabiRealDataService {
       { pattern: /under (\d+) levels?/i, operator: '<' },
       { pattern: /below (\d+) levels?/i, operator: '<' },
       { pattern: /exactly (\d+) levels?/i, operator: '=' },
-      { pattern: /(\d+) levels? exactly/i, operator: '=' }
+      { pattern: /(\d+) levels? exactly/i, operator: '=' },
+      // Add patterns for "having" constructions
+      { pattern: /having more than (\d+) levels?/i, operator: '>' },
+      { pattern: /having (\d+)\+ levels?/i, operator: '>=' },
+      { pattern: /with more than (\d+) levels?/i, operator: '>' },
+      { pattern: /with (\d+)\+ levels?/i, operator: '>=' }
     ];
 
     for (const { pattern, operator } of levelPatterns) {
+      console.log(`🔍 Testing pattern: ${pattern} against "${whereClause}"`);
       const match = whereClause.match(pattern);
       if (match) {
         const levelValue = match[1];
-        console.log(`📊 Analytical query detected: ${operator} ${levelValue} levels`);
+        console.log(`✅ PATTERN MATCHED: ${operator} ${levelValue} levels`);
         
         // Convert to ArcGIS field query - use CAST for numeric comparison
         // The field name is "building:levels" and values are strings like "6"
@@ -699,6 +713,186 @@ export class AbuDhabiRealDataService {
 
     layer.renderer = originalRenderer;
     console.log(`🎨 Reset buildings to original orange color`);
+  }
+
+  /**
+   * Analyze feature attributes to provide detailed breakdowns for LLM
+   */
+  private analyzeFeatureAttributes(layerId: string, features: any[], totalFeatures: number): any {
+    try {
+      console.log(`🔍 ANALYZING ATTRIBUTES for ${layerId} with ${features.length} features`);
+      
+      if (layerId === 'buildings_real') {
+        return this.analyzeBuildingAttributes(features, totalFeatures);
+      } else if (layerId === 'mosques_real') {
+        return this.analyzeMosqueAttributes(features, totalFeatures);
+      } else if (layerId === 'bus_stops_real') {
+        return this.analyzeBusStopAttributes(features, totalFeatures);
+      } else if (layerId === 'parks_real') {
+        return this.analyzeParkAttributes(features, totalFeatures);
+      } else if (layerId === 'parking_real') {
+        return this.analyzeParkingAttributes(features, totalFeatures);
+      } else {
+        return this.analyzeGenericAttributes(features, totalFeatures);
+      }
+    } catch (error) {
+      console.error(`❌ Error analyzing attributes for ${layerId}:`, error);
+      return { summary: 'Attribute analysis not available' };
+    }
+  }
+
+  private analyzeBuildingAttributes(features: any[], totalFeatures: number): any {
+    const buildingTypes = new Map<string, number>();
+    const amenityTypes = new Map<string, number>();
+    const levelCounts = new Map<string, number>();
+    const namedBuildings: string[] = [];
+
+    features.forEach(feature => {
+      const attrs = feature.attributes || feature.properties || {};
+      
+      // Building types
+      if (attrs.building && attrs.building !== 'yes') {
+        buildingTypes.set(attrs.building, (buildingTypes.get(attrs.building) || 0) + 1);
+      }
+      
+      // Amenity types
+      if (attrs.amenity) {
+        amenityTypes.set(attrs.amenity, (amenityTypes.get(attrs.amenity) || 0) + 1);
+      }
+      
+      // Building levels
+      const levels = attrs['building:levels'] || attrs.building_levels;
+      if (levels) {
+        const levelRange = this.getLevelRange(parseInt(levels));
+        levelCounts.set(levelRange, (levelCounts.get(levelRange) || 0) + 1);
+      }
+      
+      // Named buildings
+      if (attrs.name && namedBuildings.length < 10) {
+        namedBuildings.push(attrs.name);
+      }
+    });
+
+    return {
+      summary: `Analysis of ${features.length} buildings out of ${totalFeatures} total`,
+      buildingTypes: Object.fromEntries(buildingTypes),
+      amenityTypes: Object.fromEntries(amenityTypes),
+      levelDistribution: Object.fromEntries(levelCounts),
+      namedBuildings: namedBuildings.slice(0, 5),
+      totalAnalyzed: features.length
+    };
+  }
+
+  private analyzeMosqueAttributes(features: any[], totalFeatures: number): any {
+    const namedMosques: string[] = [];
+    const denominations = new Map<string, number>();
+
+    features.forEach(feature => {
+      const attrs = feature.attributes || feature.properties || {};
+      
+      if (attrs.name && namedMosques.length < 10) {
+        namedMosques.push(attrs.name);
+      }
+      
+      if (attrs.denomination) {
+        denominations.set(attrs.denomination, (denominations.get(attrs.denomination) || 0) + 1);
+      }
+    });
+
+    return {
+      summary: `Analysis of ${features.length} mosques out of ${totalFeatures} total`,
+      namedMosques: namedMosques.slice(0, 5),
+      denominations: Object.fromEntries(denominations),
+      totalAnalyzed: features.length
+    };
+  }
+
+  private analyzeBusStopAttributes(features: any[], totalFeatures: number): any {
+    const operators = new Map<string, number>();
+    const namedStops: string[] = [];
+
+    features.forEach(feature => {
+      const attrs = feature.attributes || feature.properties || {};
+      
+      if (attrs.name && namedStops.length < 10) {
+        namedStops.push(attrs.name);
+      }
+      
+      if (attrs.operator) {
+        operators.set(attrs.operator, (operators.get(attrs.operator) || 0) + 1);
+      }
+    });
+
+    return {
+      summary: `Analysis of ${features.length} bus stops out of ${totalFeatures} total`,
+      namedStops: namedStops.slice(0, 5),
+      operators: Object.fromEntries(operators),
+      totalAnalyzed: features.length
+    };
+  }
+
+  private analyzeParkAttributes(features: any[], totalFeatures: number): any {
+    const parkTypes = new Map<string, number>();
+    const namedParks: string[] = [];
+
+    features.forEach(feature => {
+      const attrs = feature.attributes || feature.properties || {};
+      
+      if (attrs.name && namedParks.length < 10) {
+        namedParks.push(attrs.name);
+      }
+      
+      if (attrs.leisure) {
+        parkTypes.set(attrs.leisure, (parkTypes.get(attrs.leisure) || 0) + 1);
+      }
+    });
+
+    return {
+      summary: `Analysis of ${features.length} parks out of ${totalFeatures} total`,
+      namedParks: namedParks.slice(0, 5),
+      parkTypes: Object.fromEntries(parkTypes),
+      totalAnalyzed: features.length
+    };
+  }
+
+  private analyzeParkingAttributes(features: any[], totalFeatures: number): any {
+    const parkingTypes = new Map<string, number>();
+    const namedParking: string[] = [];
+
+    features.forEach(feature => {
+      const attrs = feature.attributes || feature.properties || {};
+      
+      if (attrs.name && namedParking.length < 10) {
+        namedParking.push(attrs.name);
+      }
+      
+      if (attrs.amenity) {
+        parkingTypes.set(attrs.amenity, (parkingTypes.get(attrs.amenity) || 0) + 1);
+      }
+    });
+
+    return {
+      summary: `Analysis of ${features.length} parking areas out of ${totalFeatures} total`,
+      namedParking: namedParking.slice(0, 5),
+      parkingTypes: Object.fromEntries(parkingTypes),
+      totalAnalyzed: features.length
+    };
+  }
+
+  private analyzeGenericAttributes(features: any[], totalFeatures: number): any {
+    return {
+      summary: `Analysis of ${features.length} features out of ${totalFeatures} total`,
+      totalAnalyzed: features.length
+    };
+  }
+
+  private getLevelRange(levels: number): string {
+    if (levels <= 2) return '1-2 levels';
+    if (levels <= 5) return '3-5 levels';
+    if (levels <= 10) return '6-10 levels';
+    if (levels <= 20) return '11-20 levels';
+    if (levels <= 30) return '21-30 levels';
+    return '30+ levels';
   }
 }
 
