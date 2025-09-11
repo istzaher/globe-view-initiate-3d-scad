@@ -85,8 +85,8 @@ const MapViewer = () => {
                                 query.toLowerCase().includes('road');
       
       if (isRealDatasetQuery) {
-        console.log('🏙️ Real dataset query with no results - not calling backend API');
-        return;
+        console.log('🏙️ Real dataset query with no visual results - returning nlpResult with statistics');
+        return nlpResult; // Return the result with statistics even if no features to display
       }
       
       console.log('🔄 NLP query returned no results, trying backend API...');

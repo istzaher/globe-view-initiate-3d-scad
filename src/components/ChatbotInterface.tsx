@@ -235,6 +235,8 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
                             // Exclude general questions that shouldn't trigger spatial queries
                             (lowerMessage.includes('what') && !lowerMessage.includes('what other datasets') && !lowerMessage.includes('what datasets') && !lowerMessage.includes('what can you do'));
       
+      console.log('🔍 SPATIAL QUERY DETECTION:', { message, lowerMessage, isSpatialQuery });
+      
       let spatialContext: any = null;
       
       if (isSpatialQuery) {

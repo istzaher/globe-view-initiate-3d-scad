@@ -193,8 +193,11 @@ export class NLPQueryService {
     }
     
     // For Abu Dhabi datasets, skip location filtering since they're already geographically filtered
-    if (queryLower.includes('abu dhabi') || queryLower.includes('abu')) {
-      console.log(`🏙️ Abu Dhabi query detected, skipping location filter (data already geographically filtered)`);
+    if (queryLower.includes('abu dhabi') || queryLower.includes('abu') || 
+        queryLower.includes('city center') || queryLower.includes('city centre') ||
+        queryLower.includes('downtown') || queryLower.includes('center') ||
+        (queryLower.includes('near') && !queryLower.includes('specific location'))) {
+      console.log(`🏙️ Abu Dhabi/general location query detected, skipping location filter (data already geographically filtered)`);
       return '1=1'; // Return all features since they're already in Abu Dhabi
     }
     
