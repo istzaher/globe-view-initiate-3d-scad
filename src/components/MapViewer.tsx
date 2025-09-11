@@ -129,9 +129,7 @@ const MapViewer = () => {
         // Load all layer systems
         Promise.all([
           nlpQueryService.loadDefaultLayers(),
-          geodatabaseService.loadGeodatabaseConfig().then(() => 
-            geodatabaseService.loadGeodatabaseLayers()
-          ),
+          geodatabaseService.loadGeodatabaseLayers(),
           abuDhabiRealDataService.loadRealDatasets()
         ]).then(() => {
           console.log('✅ Feature layer system, geodatabase, and real Abu Dhabi data ready');
