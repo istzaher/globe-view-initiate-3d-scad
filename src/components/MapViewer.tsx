@@ -66,16 +66,19 @@ const MapViewer = () => {
       // Try NLP query service first for feature layers
       const nlpResult = await nlpQueryService.processQuery(query);
       
-      if (nlpResult.success && nlpResult.features) {
+      if (nlpResult && nlpResult.features && nlpResult.features.length > 0) {
         console.log('✅ NLP query successful:', nlpResult);
         setFeatureResults(nlpResult.features);
         return;
       }
       
+      console.log('🔄 NLP query returned no results, trying backend API...');
       // Fallback to original query system
       await executeQuery(query, dataset);
     } catch (error) {
       console.error('❌ Error executing query:', error);
+      // Try backend as fallback
+      await executeQuery(query, dataset);
     }
   };
 
@@ -122,6 +125,8 @@ const MapViewer = () => {
       // Test functions for debugging
       (window as any).testQuery = testQuery;
       (window as any).testSchools = () => testQuery('Show me all schools in Abu Dhabi', 'education_0');
+      (window as any).testBusStops = () => handleNLQuery('Show all bus stops in Abu Dhabi');
+      (window as any).testNLPService = nlpQueryService;
       (window as any).testPolice = () => testQuery('Show me all police stations in Abu Dhabi', 'public_safety_0');
       (window as any).testAgriculture = () => testQuery('Show me all crop fields in Abu Dhabi', 'agriculture_0');
       

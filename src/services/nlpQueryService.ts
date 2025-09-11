@@ -172,8 +172,12 @@ export class NLPQueryService {
 
   private determineLayer(query: string): string {
     const queryLower = query.toLowerCase();
+    console.log(`🔍 Testing query: "${queryLower}"`);
     
-    for (const pattern of this.queryPatterns) {
+    for (let i = 0; i < this.queryPatterns.length; i++) {
+      const pattern = this.queryPatterns[i];
+      console.log(`🧪 Testing pattern ${i}: ${pattern.pattern}`);
+      
       if (pattern.pattern.test(queryLower)) {
         console.log(`🎯 Pattern matched: ${pattern.pattern}`);
         
@@ -183,6 +187,8 @@ export class NLPQueryService {
           console.log(`🎯 Pattern match -> layer "${pattern.layerMapping[firstEntity]}"`);
           return pattern.layerMapping[firstEntity];
         }
+      } else {
+        console.log(`❌ Pattern ${i} did not match`);
       }
     }
 
