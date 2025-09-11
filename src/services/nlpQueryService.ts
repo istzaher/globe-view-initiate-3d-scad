@@ -26,7 +26,7 @@ export class NLPQueryService {
   private queryPatterns: QueryPattern[] = [
     // Real Abu Dhabi datasets
     {
-      pattern: /\b(bus stop|bus station|public transport|transit|ITC)\b/i,
+      pattern: /\b(bus stops?|bus stations?|public transport|transit|ITC)\b/i,
       entities: ['bus_stops', 'transit'],
       layerMapping: {
         'bus_stops': 'bus_stops_real',
@@ -34,7 +34,7 @@ export class NLPQueryService {
       }
     },
     {
-      pattern: /\b(mosque|masjid|place of worship|prayer|islamic|religious)\b/i,
+      pattern: /\b(mosques?|masjids?|places? of worship|prayer|islamic|religious)\b/i,
       entities: ['mosques', 'religious'],
       layerMapping: {
         'mosques': 'mosques_real',
@@ -42,7 +42,7 @@ export class NLPQueryService {
       }
     },
     {
-      pattern: /\b(park|parks|green space|recreation|garden)\b/i,
+      pattern: /\b(parks?|green spaces?|recreation|gardens?)\b/i,
       entities: ['parks', 'recreation'],
       layerMapping: {
         'parks': 'parks_real',
@@ -50,21 +50,21 @@ export class NLPQueryService {
       }
     },
     {
-      pattern: /\b(parking|car park|garage|vehicle)\b/i,
+      pattern: /\b(parking|car parks?|garages?|vehicles?)\b/i,
       entities: ['parking'],
       layerMapping: {
         'parking': 'parking_real'
       }
     },
     {
-      pattern: /\b(building|structure|architecture|construction)\b/i,
+      pattern: /\b(buildings?|structures?|architecture|construction)\b/i,
       entities: ['buildings'],
       layerMapping: {
         'buildings': 'buildings_real'
       }
     },
     {
-      pattern: /\b(road|street|highway|avenue|boulevard)\b/i,
+      pattern: /\b(roads?|streets?|highways?|avenues?|boulevards?)\b/i,
       entities: ['roads'],
       layerMapping: {
         'roads': 'roads_real'
@@ -172,12 +172,8 @@ export class NLPQueryService {
 
   private determineLayer(query: string): string {
     const queryLower = query.toLowerCase();
-    console.log(`🔍 Testing query: "${queryLower}"`);
     
-    for (let i = 0; i < this.queryPatterns.length; i++) {
-      const pattern = this.queryPatterns[i];
-      console.log(`🧪 Testing pattern ${i}: ${pattern.pattern}`);
-      
+    for (const pattern of this.queryPatterns) {
       if (pattern.pattern.test(queryLower)) {
         console.log(`🎯 Pattern matched: ${pattern.pattern}`);
         
@@ -187,8 +183,6 @@ export class NLPQueryService {
           console.log(`🎯 Pattern match -> layer "${pattern.layerMapping[firstEntity]}"`);
           return pattern.layerMapping[firstEntity];
         }
-      } else {
-        console.log(`❌ Pattern ${i} did not match`);
       }
     }
 
