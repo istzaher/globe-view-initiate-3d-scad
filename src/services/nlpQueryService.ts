@@ -1,6 +1,7 @@
 import { FeatureLayerService } from './featureLayerService';
 import { GeodatabaseService } from './geodatabaseService';
 import { DemoLayerService } from './demoLayerService';
+import { AbuDhabiRealDataService } from './abuDhabiRealDataService';
 
 interface QueryPattern {
   pattern: RegExp;
@@ -19,6 +20,7 @@ export class NLPQueryService {
   private featureLayerService: FeatureLayerService;
   private geodatabaseService: GeodatabaseService;
   private demoLayerService: DemoLayerService;
+  private abuDhabiRealDataService: AbuDhabiRealDataService | null = null;
   private view: any = null;
 
   private queryPatterns: QueryPattern[] = [
@@ -138,20 +140,21 @@ export class NLPQueryService {
     }
   ];
 
-  constructor(
-    featureLayerService: FeatureLayerService,
-    geodatabaseService: GeodatabaseService,
-    demoLayerService: DemoLayerService
-  ) {
-    this.featureLayerService = featureLayerService;
-    this.geodatabaseService = geodatabaseService;
-    this.demoLayerService = demoLayerService;
+  constructor() {
+    this.featureLayerService = new FeatureLayerService();
+    this.geodatabaseService = new GeodatabaseService();
+    this.demoLayerService = new DemoLayerService();
     console.log('🧠 NLPQueryService initialized');
   }
 
   setMapView(view: any) {
     this.view = view;
     console.log('🗺️ Map view set for NLPQueryService');
+  }
+
+  setAbuDhabiRealDataService(service: AbuDhabiRealDataService) {
+    this.abuDhabiRealDataService = service;
+    console.log('🏙️ AbuDhabiRealDataService set for NLPQueryService');
   }
 
   private analyzeQuery(query: string): { layerId: string; queryString: string } {
@@ -172,18 +175,12 @@ export class NLPQueryService {
     
     for (const pattern of this.queryPatterns) {
       if (pattern.pattern.test(queryLower)) {
-        // Find the first matching entity and return its mapped layer
-        for (const entity of pattern.entities) {
-          if (queryLower.includes(entity) && pattern.layerMapping[entity]) {
-            console.log(`🎯 Matched entity "${entity}" -> layer "${pattern.layerMapping[entity]}"`);
-            return pattern.layerMapping[entity];
-          }
-        }
+        console.log(`🎯 Pattern matched: ${pattern.pattern}`);
         
-        // If no specific entity match, return the first available mapping
+        // Return the first available mapping since the pattern already matched
         const firstEntity = pattern.entities[0];
         if (pattern.layerMapping[firstEntity]) {
-          console.log(`🎯 Default match for pattern -> layer "${pattern.layerMapping[firstEntity]}"`);
+          console.log(`🎯 Pattern match -> layer "${pattern.layerMapping[firstEntity]}"`);
           return pattern.layerMapping[firstEntity];
         }
       }
@@ -286,6 +283,10 @@ export class NLPQueryService {
       if (layerId.startsWith('gdb_')) {
         // Query from geodatabase service
         features = await this.geodatabaseService.queryLayer(layerId, queryString);
+      } else if (layerId.endsWith('_real') && this.abuDhabiRealDataService) {
+        // Query from real Abu Dhabi dataset service
+        const queryResult = await this.abuDhabiRealDataService.queryLayer(layerId, { where: queryString });
+        features = queryResult ? queryResult.features : [];
       } else {
         // Query from demo layer service
         features = await this.demoLayerService.queryLayer(layerId, queryString);
@@ -298,10 +299,15 @@ export class NLPQueryService {
         // Try querying all available layers
         const allDemoLayers = this.demoLayerService.getAvailableLayers();
         const allGdbLayers = this.geodatabaseService.getAvailableLayers();
+        const allRealLayers = this.abuDhabiRealDataService ? 
+          ['bus_stops_real', 'mosques_real', 'parks_real', 'parking_real', 'buildings_real', 'roads_real'] : [];
         
-        for (const fallbackLayerId of [...allDemoLayers, ...allGdbLayers]) {
+        for (const fallbackLayerId of [...allRealLayers, ...allDemoLayers, ...allGdbLayers]) {
           if (fallbackLayerId.startsWith('gdb_')) {
             features = await this.geodatabaseService.queryLayer(fallbackLayerId, '1=1');
+          } else if (fallbackLayerId.endsWith('_real') && this.abuDhabiRealDataService) {
+            const queryResult = await this.abuDhabiRealDataService.queryLayer(fallbackLayerId, { where: '1=1' });
+            features = queryResult ? queryResult.features : [];
           } else {
             features = await this.demoLayerService.queryLayer(fallbackLayerId, '1=1');
           }

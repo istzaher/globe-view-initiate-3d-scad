@@ -620,9 +620,11 @@ export const useNLQuery = () => {
       console.log('Executing NL query:', query, 'for dataset:', dataset);
 
       // Clear existing graphics only if requested
-      if (clearGraphics) {
+      if (clearGraphics && graphicsLayer) {
         console.log('🗑️ Clearing existing graphics');
         graphicsLayer.removeAll();
+      } else if (clearGraphics) {
+        console.log('⚠️ Graphics layer not available for clearing');
       } else {
         console.log('🔄 Keeping existing graphics, adding new layer');
       }

@@ -101,6 +101,9 @@ const MapViewer = () => {
         demoLayerService.setMapView(view);
         abuDhabiRealDataService.setView(view);
         
+        // Connect services together
+        nlpQueryService.setAbuDhabiRealDataService(abuDhabiRealDataService);
+        
         // Load all layer systems
         Promise.all([
           nlpQueryService.loadDefaultLayers(),
