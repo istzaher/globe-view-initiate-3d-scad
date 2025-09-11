@@ -280,17 +280,16 @@ export class NLPQueryService {
       let features: any[] = [];
 
       // Try to query from different services based on layer ID
-      console.log(`🔍 Service routing: layerId="${layerId}", endsWith_real=${layerId.endsWith('_real')}, hasRealService=${!!this.abuDhabiRealDataService}`);
-      
       if (layerId.startsWith('gdb_')) {
-        console.log('📊 Routing to geodatabase service');
+        // Query from geodatabase service
         features = await this.geodatabaseService.queryLayer(layerId, queryString);
       } else if (layerId.endsWith('_real') && this.abuDhabiRealDataService) {
-        console.log('🏙️ Routing to Abu Dhabi real data service');
+        // Query from real Abu Dhabi dataset service
+        console.log(`🏙️ Querying real dataset: ${layerId}`);
         const queryResult = await this.abuDhabiRealDataService.queryLayer(layerId, { where: queryString });
         features = queryResult ? queryResult.features : [];
       } else {
-        console.log('🎭 Routing to demo layer service (fallback)');
+        // Query from demo layer service
         features = await this.demoLayerService.queryLayer(layerId, queryString);
       }
 
