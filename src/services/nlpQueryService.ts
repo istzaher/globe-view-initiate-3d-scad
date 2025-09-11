@@ -273,8 +273,11 @@ export class NLPQueryService {
         // Create service instance if not set
         if (!this.abuDhabiRealDataService) {
           console.log('🔧 Creating new AbuDhabiRealDataService instance...');
+          console.log('🗺️ NLP Service view status:', !!this.view);
+          
           this.abuDhabiRealDataService = new AbuDhabiRealDataService();
           if (this.view) {
+            console.log('✅ Setting view on AbuDhabiRealDataService...');
             this.abuDhabiRealDataService.setView(this.view);
             console.log('⏳ Loading real datasets...');
             try {
@@ -285,7 +288,7 @@ export class NLPQueryService {
               console.error('❌ Error loading real datasets:', loadError);
             }
           } else {
-            console.error('❌ No map view available for AbuDhabiRealDataService');
+            console.error('❌ No map view available in NLP Service - this.view is:', this.view);
           }
         }
         
