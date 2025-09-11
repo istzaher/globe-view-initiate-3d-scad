@@ -45,7 +45,7 @@ interface ChatbotResponse {
 }
 
 interface ChatbotInterfaceProps {
-  onQuerySubmit: (query: string, dataset?: string) => void;
+  onQuerySubmit: (query: string, dataset?: string) => Promise<any> | any;
   currentDataset?: string;
   isProcessing?: boolean;
   visibleLayers?: string[];
@@ -73,10 +73,10 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
     if (visibleLayers.length === 0) {
       // Default suggestions when no layers are visible
       suggestions.push(
-        { question: "Show all bus stops in Abu Dhabi", type: "search", confidence: 0.9 },
+        { question: "Show all bus stops in Abu Dhabi", type: "spatial", confidence: 0.9 },
         { question: "Find mosques near city center", type: "spatial", confidence: 0.9 },
-        { question: "Display parks and green spaces", type: "search", confidence: 0.8 },
-        { question: "Show parking areas", type: "search", confidence: 0.7 },
+        { question: "Display parks and green spaces", type: "spatial", confidence: 0.8 },
+        { question: "Show parking areas", type: "spatial", confidence: 0.7 },
         { question: "Find healthcare facilities in GDB data", type: "spatial", confidence: 0.8 }
       );
     } else {
@@ -207,20 +207,85 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
     setIsTyping(true);
 
     try {
+      // Check if this is a spatial query before processing
+      const lowerMessage = message.toLowerCase();
+      const isSpatialQuery = lowerMessage.includes('show') || 
+                            lowerMessage.includes('find') || 
+                            lowerMessage.includes('get') || 
+                            lowerMessage.includes('bus stop') || 
+                            lowerMessage.includes('bus') || 
+                            lowerMessage.includes('mosque') || 
+                            lowerMessage.includes('mosques') || 
+                            lowerMessage.includes('park') || 
+                            lowerMessage.includes('parks') || 
+                            lowerMessage.includes('parking') || 
+                            lowerMessage.includes('building') || 
+                            lowerMessage.includes('buildings') || 
+                            lowerMessage.includes('road') || 
+                            lowerMessage.includes('roads') ||
+                            lowerMessage.includes('list') ||
+                            lowerMessage.includes('display') ||
+                            lowerMessage.includes('all') ||
+                            lowerMessage.includes('near') ||
+                            lowerMessage.includes('levels') ||
+                            lowerMessage.includes('floors') ||
+                            lowerMessage.includes('where') ||
+                            lowerMessage.includes('search') ||
+                            lowerMessage.includes('locate') ||
+                            // Exclude general questions that shouldn't trigger spatial queries
+                            (lowerMessage.includes('what') && !lowerMessage.includes('what other datasets') && !lowerMessage.includes('what datasets') && !lowerMessage.includes('what can you do'));
+      
+      let spatialContext: any = null;
+      
+      if (isSpatialQuery) {
+        try {
+          console.log('🔍 SPATIAL QUERY DETECTED - CALLING onQuerySubmit with message:', message);
+          // Note: onQuerySubmit also handles map display, so we'll get the result for statistics
+          const nlpResult = await onQuerySubmit(message);
+          console.log('📋 NLP RESULT RECEIVED:', nlpResult);
+          
+          if (nlpResult && nlpResult.statistics) {
+            console.log('✅ STATISTICS FOUND IN NLP RESULT:', nlpResult.statistics);
+            spatialContext = {
+              queryResults: {
+                features: nlpResult.features?.length || 0,
+                totalFeatures: nlpResult.statistics.totalFeatures,
+                matchingFeatures: nlpResult.statistics.matchingFeatures,
+                percentage: nlpResult.statistics.percentage,
+                layerType: nlpResult.statistics.layerType,
+                queryType: nlpResult.statistics.queryType
+              },
+              spatialSummary: `Found ${nlpResult.statistics.matchingFeatures} features out of ${nlpResult.statistics.totalFeatures} total features (${nlpResult.statistics.percentage}%). Dataset: ${nlpResult.statistics.layerType}.`
+            };
+            console.log('📊 SPATIAL CONTEXT FOR LLM:', spatialContext);
+            console.log('🚀 SENDING SPATIAL CONTEXT TO BACKEND...');
+          } else {
+            console.warn('❌ NO STATISTICS IN NLP RESULT:', nlpResult);
+          }
+        } catch (error) {
+          console.log('ℹ️ No spatial results, proceeding with normal chat query');
+          console.error('❌ Error in onQuerySubmit:', error);
+        }
+      } else {
+        console.log('💬 NON-SPATIAL QUERY DETECTED - SKIPPING MAP PROCESSING:', message);
+      }
+
+      // Prepare the request body - match backend ChatbotRequest structure
+      const requestBody = {
+        message,
+        sessionId,
+        currentDataset,
+        spatialContext: spatialContext
+      };
+
+      console.log('📤 SENDING TO BACKEND:', requestBody);
+
       const response = await fetch('/api/chatbot/query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          message,
-          sessionId,
-          context: {
-            currentDataset,
-            previousQuery: messages[messages.length - 1]?.content,
-            spatialContext: null
-          }
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {

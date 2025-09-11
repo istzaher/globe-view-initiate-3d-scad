@@ -67,7 +67,13 @@ const MapViewer = () => {
       if (nlpResult && nlpResult.features && nlpResult.features.length > 0) {
         console.log('✅ NLP query successful:', nlpResult);
         setFeatureResults(nlpResult.features);
-        return;
+        
+        // Generate statistical chat response if statistics are available
+        if (nlpResult.statistics) {
+          console.log('📊 Statistics available, will be used in chat response:', nlpResult.statistics);
+        }
+        
+        return nlpResult; // Return the result with statistics
       }
       
       // Check if this was a real dataset query that should not fall back to backend
@@ -126,16 +132,9 @@ const MapViewer = () => {
         // Connect services together
         nlpQueryService.setAbuDhabiRealDataService(abuDhabiRealDataService);
         
-        // Load all layer systems
-        Promise.all([
-          nlpQueryService.loadDefaultLayers(),
-          geodatabaseService.loadGeodatabaseLayers(),
-          abuDhabiRealDataService.loadRealDatasets()
-        ]).then(() => {
-          console.log('✅ Feature layer system, geodatabase, and real Abu Dhabi data ready');
-        }).catch(error => {
-          console.error('❌ Error initializing layers:', error);
-        });
+        // Initialize services but don't load datasets automatically
+        // Datasets will only be loaded when requested via GenAI
+        console.log('✅ Feature layer services initialized - datasets will load on demand');
   };
   
   // Set up test functions for debugging

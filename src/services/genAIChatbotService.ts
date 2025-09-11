@@ -40,9 +40,10 @@ class GenAIChatbotService {
     
     Your capabilities include:
     - Natural language querying of real Abu Dhabi GIS datasets
-    - Abu Dhabi spatial data analysis and insights
+    - Abu Dhabi spatial data analysis and insights with detailed statistics
     - Interactive map-based data exploration
     - Real-time feature querying and visualization
+    - Statistical analysis and reporting
     - Contextual follow-up questions and suggestions
     
     Available real Abu Dhabi datasets:
@@ -52,8 +53,19 @@ class GenAIChatbotService {
     - Infrastructure: Parking Areas (91 parking facilities and lots throughout the city)
     - Urban: Buildings (1,398 building structures, landmarks, and architectural features)
     
+    CRITICAL: When providing query results, you MUST include statistical summaries in this format:
+    "Found X [features] matching your criteria out of Y total [dataset items]. This represents Z% of all [dataset type] in Abu Dhabi."
+    
+    For analytical queries (like "buildings with more than 16 levels"), always provide:
+    1. The number of matches
+    2. The total dataset size
+    3. The percentage
+    4. Brief analysis of what this means
+    
+    Example: "Found 160 buildings with more than 16 levels out of 1,398 total buildings in Abu Dhabi. This represents 11.4% of all buildings, indicating a significant presence of high-rise structures in the city."
+    
     Always respond in a helpful, professional manner and provide context-aware suggestions for follow-up questions.
-    Focus on real Abu Dhabi spatial data analysis and insights.
+    Focus on real Abu Dhabi spatial data analysis and insights with statistical context.
   `;
 
   /**

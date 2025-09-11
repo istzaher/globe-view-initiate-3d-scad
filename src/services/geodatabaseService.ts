@@ -300,46 +300,8 @@ export class GeodatabaseService {
   }
 
   async loadGeodatabaseLayers(): Promise<void> {
-    if (!this.view) {
-      console.error('❌ Map view not set');
-      return;
-    }
-
-    try {
-      console.log('📄 Loading geodatabase layers...');
-      
-      const [FeatureLayer] = await loadModules(['esri/layers/FeatureLayer']);
-      
-      const layerConfigs = this.loadGeodatabaseConfig();
-
-      for (const layerConfig of layerConfigs) {
-        try {
-          console.log(`📄 Creating layer: ${layerConfig.title}`);
-          
-          const mockFeatures = this.generateMockFeatures(layerConfig, 6);
-          
-          const layer = new FeatureLayer({
-            title: layerConfig.title,
-            geometryType: layerConfig.geometryType,
-            spatialReference: { wkid: 4326 },
-            fields: layerConfig.fields,
-            objectIdField: 'OBJECTID',
-            source: mockFeatures,
-            visible: layerConfig.visible,
-            renderer: this.getLayerRenderer(layerConfig)
-          });
-
-          this.view.map.add(layer);
-          this.geodatabaseLayers.set(layerConfig.id, layer);
-          
-          console.log(`✅ Layer added: ${layerConfig.title}`);
-        } catch (error) {
-          console.error(`❌ Error creating layer ${layerConfig.title}:`, error);
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error loading geodatabase layers:', error);
-    }
+    console.log('⚠️ GeodatabaseService loading disabled - mock data layers will not be loaded automatically');
+    console.log('📄 Geodatabase layers are available on demand only');
   }
 
   async queryLayer(layerId: string, query: string = '1=1'): Promise<any[]> {

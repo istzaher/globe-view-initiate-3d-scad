@@ -13,6 +13,13 @@ interface QueryResult {
   layerId: string;
   query: string;
   totalCount: number;
+  statistics?: {
+    totalFeatures: number;
+    matchingFeatures: number;
+    percentage: string;
+    queryType: 'analytical' | 'general';
+    layerType: string;
+  };
 }
 
 export class NLPQueryService {
@@ -20,6 +27,7 @@ export class NLPQueryService {
   private geodatabaseService: GeodatabaseService;
   private abuDhabiRealDataService: AbuDhabiRealDataService | null = null;
   private view: any = null;
+  private lastQueryStatistics: any = null;
 
   private queryPatterns: QueryPattern[] = [
     // Real Abu Dhabi datasets
@@ -170,13 +178,19 @@ export class NLPQueryService {
       }
     }
 
-    // Default to schools if no match found
-    console.log('🎯 No pattern matched, defaulting to abu_dhabi_schools');
-    return 'abu_dhabi_schools';
+    // Default to buildings if no match found (buildings include schools)
+    console.log('🎯 No pattern matched, defaulting to buildings_real');
+    return 'buildings_real';
   }
 
   private buildQueryString(query: string): string {
     const queryLower = query.toLowerCase();
+    
+    // Handle analytical queries for building levels
+    if (queryLower.includes('levels') || queryLower.includes('floors') || queryLower.includes('stories')) {
+      console.log(`📊 Analytical building query detected: ${query}`);
+      return query; // Pass the full query to be processed by parseAnalyticalQuery
+    }
     
     // For Abu Dhabi datasets, skip location filtering since they're already geographically filtered
     if (queryLower.includes('abu dhabi') || queryLower.includes('abu')) {
@@ -242,8 +256,8 @@ export class NLPQueryService {
           visible: false
         },
         {
-          id: 'abu_dhabi_schools',
-          title: 'Abu Dhabi Schools',
+          id: 'buildings_real',
+          title: 'Abu Dhabi Buildings (includes schools)',
           url: '',
           visible: false
         }
@@ -277,7 +291,11 @@ export class NLPQueryService {
 
       // Try to query from different services based on layer ID
       if (layerId.startsWith('gdb_')) {
-        // Query from geodatabase service
+        // Query from geodatabase service - clear graphics first for isolation
+        this.featureLayerService.clearGraphics();
+        if (this.abuDhabiRealDataService) {
+          this.abuDhabiRealDataService.hideAllDatasets();
+        }
         features = await this.geodatabaseService.queryLayer(layerId, queryString);
       } else if (layerId.endsWith('_real')) {
         // Query from real Abu Dhabi dataset service
@@ -292,62 +310,69 @@ export class NLPQueryService {
           if (this.view) {
             console.log('✅ Setting view on AbuDhabiRealDataService...');
             this.abuDhabiRealDataService.setView(this.view);
-            console.log('⏳ Loading real datasets...');
-            try {
-              await this.abuDhabiRealDataService.loadRealDatasets();
-              console.log('✅ Real datasets loaded successfully');
-              console.log('📊 Available layers after loading:', this.abuDhabiRealDataService.getLoadedLayers().length);
-            } catch (loadError) {
-              console.error('❌ Error loading real datasets:', loadError);
-            }
+            console.log('✅ AbuDhabiRealDataService ready for on-demand loading');
           } else {
             console.error('❌ No map view available in NLP Service - this.view is:', this.view);
           }
         }
         
+        // Hide all other datasets and clear any existing graphics
+        this.abuDhabiRealDataService.hideAllDatasets();
+        this.featureLayerService.clearGraphics();
+        
+        // For buildings, always clear graphics to remove yellow circles
+        if (layerId === 'buildings_real') {
+          console.log(`🏗️ Clearing graphics for building query to remove any yellow circle markers`);
+          this.featureLayerService.clearGraphics();
+          
+          // Reset building colors for non-analytical queries
+          if (!queryString.includes('levels')) {
+            this.abuDhabiRealDataService.resetBuildingColors();
+          }
+        }
+        
+        await this.abuDhabiRealDataService.loadSpecificDataset(layerId);
+        
         const queryResult = await this.abuDhabiRealDataService.queryLayer(layerId, { where: queryString });
         features = queryResult ? queryResult.features : [];
+        
+        // Store statistics from the query result
+        if (queryResult && queryResult.statistics) {
+          console.log(`📊 Retrieved statistics from query:`, queryResult.statistics);
+          this.lastQueryStatistics = queryResult.statistics;
+        }
       } else {
         // No service available for this layer type
         console.warn(`❌ No service available for layer: ${layerId}`);
         features = [];
       }
 
-      // If no features found, try fallback queries
+      // Fallback mechanism disabled to prevent mixing datasets
       if (features.length === 0) {
-        console.log('🔄 No features found, trying fallback...');
-        
-        // Try querying all available layers
-        const allGdbLayers = this.geodatabaseService.getAvailableLayers();
-        const allRealLayers = this.abuDhabiRealDataService ? 
-          ['bus_stops_real', 'mosques_real', 'parks_real', 'parking_real', 'buildings_real', 'roads_real'] : [];
-        
-        for (const fallbackLayerId of [...allRealLayers, ...allGdbLayers]) {
-          if (fallbackLayerId.startsWith('gdb_')) {
-            features = await this.geodatabaseService.queryLayer(fallbackLayerId, '1=1');
-          } else if (fallbackLayerId.endsWith('_real') && this.abuDhabiRealDataService) {
-            const queryResult = await this.abuDhabiRealDataService.queryLayer(fallbackLayerId, { where: '1=1' });
-            features = queryResult ? queryResult.features : [];
-          }
-          
-          if (features.length > 0) {
-            console.log(`✅ Found ${features.length} features in fallback layer: ${fallbackLayerId}`);
-            break;
-          }
-        }
+        console.log('🔄 No features found for specific query - fallback disabled to maintain dataset isolation');
       }
 
-      // Highlight features on map
-      if (features.length > 0) {
+      // Highlight features on map (skip for buildings - they use renderer-based highlighting)
+      if (features.length > 0 && layerId !== 'buildings_real') {
         await this.featureLayerService.highlightFeatures(features);
+      } else if (layerId === 'buildings_real') {
+        console.log(`🏗️ Skipping graphics highlighting for buildings - using renderer-based highlighting instead`);
       }
 
       const result: QueryResult = {
         features,
         layerId,
         query: queryString,
-        totalCount: features.length
+        totalCount: features.length,
+        statistics: this.lastQueryStatistics
       };
+      
+      // Log the statistics for debugging
+      if (this.lastQueryStatistics) {
+        console.log(`📊 Including statistics in result:`, this.lastQueryStatistics);
+      } else {
+        console.warn(`⚠️ No statistics available for this query`);
+      }
 
       console.log(`✅ Query completed: ${features.length} features found`);
       return result;

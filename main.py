@@ -160,6 +160,15 @@ REAL_ABU_DHABI_DATASETS = {
         "category": "Urban",
         "features": 1398,
         "real_data": True
+    },
+    "roads_real": {
+        "name": "Abu Dhabi Roads",
+        "description": "Street and road network throughout the city",
+        "file": "Roads_Query.geojson",
+        "geometry_type": "Polyline", 
+        "category": "Transportation",
+        "features": 0,  # Large dataset, count unknown
+        "real_data": True
     }
 }
 
@@ -597,8 +606,16 @@ async def parse_query(request: QueryRequest):
             "maxRecordCount": 1000
         }
         
-        # Check if this is a mock dataset for Abu Dhabi POC
-        if dataset_config.get("mock_data", False):
+        # Check if this is a real Abu Dhabi dataset (handled by frontend)
+        if dataset_config.get("real_data", False):
+            logger.info(f"🏙️ Real Abu Dhabi dataset {dataset_config['name']} - handled by frontend, returning empty result")
+            # Real datasets are handled by the frontend AbuDhabiRealDataService
+            # Backend should not process these queries directly
+            arcgis_data = {
+                "features": [],
+                "spatialReference": {"wkid": 3857}
+            }
+        elif dataset_config.get("mock_data", False):
             logger.info(f"🎭 Generating mock Abu Dhabi data for {dataset_config['name']}")
             arcgis_data = generate_abu_dhabi_mock_data(dataset_config, request.query)
         else:
@@ -946,6 +963,23 @@ async def chatbot_query(request: ChatbotRequest):
     """
     try:
         logger.info(f"🤖 Chatbot query: {request.message} (Session: {request.sessionId})")
+        logger.info(f"🔍 REQUEST DETAILS: currentDataset={request.currentDataset}, spatialContext={request.spatialContext}")
+        
+        # If spatial context is provided, use LLM for statistical responses
+        if request.spatialContext:
+            logger.info(f"🎯 SPATIAL CONTEXT PROVIDED - USING LLM PATH FOR STATISTICAL RESPONSE")
+            # Continue to LLM path for statistical responses
+        else:
+            logger.info(f"🔄 NO SPATIAL CONTEXT - USING SIMPLE RESPONSE PATH")
+            # Use simple responses for non-spatial queries
+            query_type = determine_query_type(request.message) if 'determine_query_type' in globals() else 'general'
+            context = {
+                "currentDataset": request.currentDataset,
+                "spatialContext": request.spatialContext
+            }
+            simple_response = generate_chatbot_response(request.message, query_type, context, request)
+            logger.info(f"📝 SIMPLE RESPONSE GENERATED: {simple_response}")
+            return ChatbotResponse(**simple_response)
         
         # Get or create conversation context
         if request.sessionId not in conversation_memory:
@@ -1052,22 +1086,57 @@ async def generate_llm_response(request: LLMRequest):
                 "content": """You are the SCAD GenAI Assistant for Abu Dhabi Statistics Centre.
                 
 You specialize in:
-- Abu Dhabi GIS and spatial data analysis
+- Abu Dhabi GIS and spatial data analysis with detailed statistics
 - Infrastructure and urban planning insights
 - Abu Dhabi District Pulse livability indicators
 - Real-time spatial queries and data interpretation
+- Statistical analysis and reporting
 
-You have access to real Abu Dhabi datasets including bus stops, mosques, parks, buildings, parking, and roads.
+You have access to real Abu Dhabi datasets including:
+- Transportation: Bus Stops (76 ITC public transit stops)
+- Religious: Mosques (35+ Islamic places of worship)
+- Recreation: Parks (15+ public parks and green spaces)
+- Infrastructure: Parking Areas (91 parking facilities)
+- Urban: Buildings (1,398 building structures)
 
-Provide helpful, accurate responses focused on Abu Dhabi's spatial data. Keep responses professional but conversational."""
+CRITICAL: When discussing query results, you MUST include statistical summaries in this format:
+"Found X [features] matching your criteria out of Y total [dataset items]. This represents Z% of all [dataset type] in Abu Dhabi."
+
+For analytical queries (like "buildings with more than 16 levels"), always provide:
+1. The number of matches
+2. The total dataset size  
+3. The percentage
+4. Brief analysis of what this means
+
+Example: "Found 160 buildings with more than 16 levels out of 1,398 total buildings in Abu Dhabi. This represents 11.4% of all buildings, indicating a significant presence of high-rise structures in the city."
+
+For general queries, still provide statistics:
+"Showing all 76 bus stops in Abu Dhabi. This covers 100% of the ITC public transportation network in the city."
+
+Provide helpful, accurate responses focused on Abu Dhabi's spatial data with statistical context. Keep responses professional but conversational."""
             })
         
-        # Add context if provided
-        if request.context:
-            messages.append({
-                "role": "assistant",
-                "content": f"Context: {request.context}"
-            })
+        # Add spatial context if provided
+        logger.info(f"🔍 CHECKING SPATIAL CONTEXT: {request.spatialContext is not None}")
+        if request.spatialContext:
+            logger.info(f"📊 RECEIVED SPATIAL CONTEXT: {request.spatialContext}")
+            spatial_ctx = request.spatialContext
+            if isinstance(spatial_ctx, dict) and spatial_ctx.get('spatialSummary'):
+                # Enhanced spatial context with statistics
+                spatial_message = f"Spatial Query Results: {spatial_ctx['spatialSummary']} Use this information to provide a detailed statistical response following the required format."
+                logger.info(f"📊 ADDING SPATIAL MESSAGE TO LLM: {spatial_message}")
+                messages.append({
+                    "role": "assistant",
+                    "content": spatial_message
+                })
+            else:
+                logger.info(f"📊 SPATIAL CONTEXT FOUND BUT NO SUMMARY: {spatial_ctx}")
+                messages.append({
+                    "role": "assistant", 
+                    "content": f"Spatial Context: {spatial_ctx}"
+                })
+        else:
+            logger.info(f"📊 NO SPATIAL CONTEXT PROVIDED")
         
         # Add user message
         messages.append({
@@ -1131,6 +1200,83 @@ def generate_chatbot_response(message: str, query_type: str, context: dict, requ
     """Generate contextual chatbot response"""
     lower_message = message.lower()
     
+    # PRIORITY: Use LLM for ANY query with spatial context (statistics for ALL datasets)
+    if request.spatialContext:
+        logger.info(f"🔍 CHECKING SPATIAL CONTEXT: {bool(request.spatialContext)}")
+        logger.info(f"📊 RECEIVED SPATIAL CONTEXT: {request.spatialContext}")
+        
+        # Call LLM with spatial context for statistical response
+        try:
+            client = get_openai_client()
+            if client:
+                # Build messages with spatial context
+                messages = [
+                    {
+                        "role": "system",
+                        "content": """You are the SCAD GenAI Assistant specialized in Abu Dhabi spatial data analysis. 
+
+CRITICAL: When spatial data is provided, you MUST provide statistical summaries in this format:
+"Found [X] [feature_type] out of [total] total features ([percentage]%). [Additional context about the results]"
+
+For example:
+- "Found 76 bus stops out of 76 total features (100.0%). These are all the ITC public transit stops currently available in Abu Dhabi."
+- "Found 35 mosques out of 35 total features (100.0%). This represents all Islamic places of worship and prayer facilities in the dataset."
+- "Found 160 buildings out of 1350 total buildings (11.9%). These are buildings with more than 16 levels, representing the high-rise structures in Abu Dhabi."
+- "Found 15 parks out of 15 total features (100.0%). These represent all public parks, green spaces, and recreational areas available in Abu Dhabi."
+- "Found 91 parking areas out of 91 total features (100.0%). These represent all parking facilities and lots throughout Abu Dhabi city."
+
+Always include the statistics and provide meaningful context about what the results represent."""
+                    }
+                ]
+                
+                # Add spatial context as a system message
+                spatial_summary = request.spatialContext.get('spatialSummary', '')
+                query_results = request.spatialContext.get('queryResults', {})
+                
+                spatial_message = f"""SPATIAL QUERY RESULTS:
+Query: {message}
+Results: {spatial_summary}
+Details: {query_results.get('features', 0)} features found out of {query_results.get('totalFeatures', 0)} total features ({query_results.get('percentage', '0')}%)
+Dataset: {query_results.get('layerType', 'unknown')} ({query_results.get('queryType', 'general')} query)"""
+                
+                logger.info(f"📊 ADDING SPATIAL MESSAGE TO LLM: {spatial_message}")
+                
+                messages.append({
+                    "role": "system", 
+                    "content": spatial_message
+                })
+                
+                messages.append({
+                    "role": "user",
+                    "content": message
+                })
+                
+                # Call LLM
+                response = client.chat.completions.create(
+                    model=os.getenv("OPENROUTER_MODEL", "openai/gpt-4o"),
+                    messages=messages,
+                    max_tokens=500,
+                    temperature=0.7
+                )
+                
+                llm_message = response.choices[0].message.content
+                logger.info(f"✅ LLM RESPONSE WITH STATISTICS: {llm_message}")
+                
+                return {
+                    "message": llm_message,
+                    "type": "query",
+                    "metadata": {
+                        "queryType": query_type,
+                        "confidence": 0.95,
+                        "statisticsProvided": True
+                    },
+                    "followUpSuggestions": generate_followup_suggestions(context)
+                }
+                
+        except Exception as e:
+            logger.error(f"❌ LLM Error: {e}")
+            # Continue to fallback responses below
+    
     # Handle greetings
     if query_type == 'greeting':
         return {
@@ -1150,12 +1296,12 @@ def generate_chatbot_response(message: str, query_type: str, context: dict, requ
     # Handle dataset inquiries
     if 'dataset' in lower_message or 'available data' in lower_message:
         return {
-            "message": "Here are the available real Abu Dhabi datasets:\n\n**Transportation:**\n• Bus Stops (76 ITC public transit stops with routes and schedules)\n\n**Religious:**\n• Mosques (35+ Islamic places of worship and prayer facilities)\n\n**Recreation:**\n• Parks (15+ public parks, green spaces, and recreational areas)\n\n**Infrastructure:**\n• Parking Areas (91 parking facilities and lots throughout the city)\n\n**Urban:**\n• Buildings (1,398 building structures, landmarks, and architectural features)\n\nWhich dataset would you like to explore?",
+            "message": "Here are the available real Abu Dhabi datasets:\n\n**Transportation:**\n• Bus Stops (76 ITC public transit stops with routes and schedules)\n• Roads (Street and road network throughout the city)\n\n**Religious:**\n• Mosques (35+ Islamic places of worship and prayer facilities)\n\n**Recreation:**\n• Parks (15+ public parks, green spaces, and recreational areas)\n\n**Infrastructure:**\n• Parking Areas (91 parking facilities and lots throughout the city)\n\n**Urban:**\n• Buildings (1,398 building structures, landmarks, and architectural features)\n\nWhich dataset would you like to explore?",
             "type": "explanation",
             "followUpSuggestions": get_default_suggestions()
         }
     
-    # Handle spatial queries
+    # Handle spatial queries - fallback for queries without spatial context
     if query_type in ['spatial', 'proximity']:
         return {
             "message": f"I'll help you with that spatial query. {get_spatial_guidance(message)}",
@@ -1298,6 +1444,11 @@ def get_default_suggestions() -> List[Dict[str, Any]]:
         },
         {
             "question": "Find parking areas near buildings",
+            "type": "spatial",
+            "confidence": 0.8
+        },
+        {
+            "question": "Show roads and street network",
             "type": "spatial",
             "confidence": 0.8
         },

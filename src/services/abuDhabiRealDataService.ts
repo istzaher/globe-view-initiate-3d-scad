@@ -44,7 +44,7 @@ export class AbuDhabiRealDataService {
         category: 'transportation',
         color: '#1e40af',
         icon: 'bus',
-        visible: true
+        visible: false
       },
       {
         id: 'mosques_real',
@@ -53,9 +53,9 @@ export class AbuDhabiRealDataService {
         file: '/data/mosques_query.geojson',
         geometry_type: 'polygon',
         category: 'religious',
-        color: '#16a34a',
+        color: '#7c3aed',
         icon: 'place-of-worship',
-        visible: true
+        visible: false
       },
       {
         id: 'parks_real',
@@ -66,7 +66,7 @@ export class AbuDhabiRealDataService {
         category: 'recreation',
         color: '#059669',
         icon: 'trees',
-        visible: true
+        visible: false
       },
       {
         id: 'parking_real',
@@ -107,11 +107,8 @@ export class AbuDhabiRealDataService {
       try {
         console.log(`🔄 Loading dataset: ${dataset.id}`);
         
-        // Skip roads dataset to avoid validation errors
-        if (dataset.id === 'roads_real') {
-          console.log(`⏭️ Skipping ${dataset.id} (disabled due to validation issues)`);
-          continue;
-        }
+        // Roads dataset now enabled for on-demand loading
+        console.log(`🛣️ Processing dataset: ${dataset.id}`);
         
         await this.loadDataset(dataset);
         console.log(`✅ Completed loading: ${dataset.id}`);
@@ -123,6 +120,136 @@ export class AbuDhabiRealDataService {
     console.log('✅ Real Abu Dhabi datasets loaded');
     console.log('📊 Total loaded layers:', this.loadedLayers.size);
     console.log('📋 Layer IDs:', Array.from(this.loadedLayers.keys()));
+  }
+
+  private getDatasetConfigs(): AbuDhabiDataConfig[] {
+    return [
+      {
+        id: 'bus_stops_real',
+        title: 'Abu Dhabi Bus Stops',
+        description: 'ITC public transportation stops',
+        file: '/data/bus_stops_query.geojson',
+        geometry_type: 'point',
+        category: 'transportation',
+        color: '#1e40af',
+        icon: 'bus',
+        visible: false
+      },
+      {
+        id: 'mosques_real',
+        title: 'Abu Dhabi Mosques',
+        description: 'Islamic places of worship',
+        file: '/data/mosques_query.geojson',
+        geometry_type: 'polygon',
+        category: 'religious',
+        color: '#7c3aed',
+        icon: 'place-of-worship',
+        visible: false
+      },
+      {
+        id: 'parks_real',
+        title: 'Abu Dhabi Parks',
+        description: 'Public parks and green spaces',
+        file: '/data/Parks_In_Bbox.geojson',
+        geometry_type: 'polygon',
+        category: 'recreation',
+        color: '#059669',
+        icon: 'trees',
+        visible: false
+      },
+      {
+        id: 'parking_real',
+        title: 'Abu Dhabi Parking',
+        description: 'Parking areas and facilities',
+        file: '/data/Parking_Areas.geojson',
+        geometry_type: 'polygon',
+        category: 'transportation',
+        color: '#dc2626',
+        icon: 'car',
+        visible: false
+      },
+      {
+        id: 'buildings_real',
+        title: 'Abu Dhabi Buildings',
+        description: 'Building structures and architecture',
+        file: '/data/BuildingStructures.geojson',
+        geometry_type: 'polygon',
+        category: 'infrastructure',
+        color: '#6b7280',
+        icon: 'building',
+        visible: false
+      },
+      {
+        id: 'roads_real',
+        title: 'Abu Dhabi Roads',
+        description: 'Street and road network',
+        file: '/data/Roads_Query.geojson',
+        geometry_type: 'polyline',
+        category: 'transportation',
+        color: '#374151',
+        icon: 'route',
+        visible: false
+      }
+    ];
+  }
+
+  async loadSpecificDataset(datasetId: string): Promise<void> {
+    if (!this.view) {
+      console.error('❌ No map view available for AbuDhabiRealDataService');
+      return;
+    }
+
+    // Check if dataset is already loaded
+    if (this.loadedLayers.has(datasetId)) {
+      console.log(`✅ Dataset ${datasetId} already loaded, making it visible`);
+      const layer = this.loadedLayers.get(datasetId);
+      if (layer) {
+        layer.visible = true;
+      }
+      return;
+    }
+
+    console.log(`🏙️ Loading specific dataset: ${datasetId}`);
+    
+    const datasets = this.getDatasetConfigs();
+    const dataset = datasets.find(d => d.id === datasetId);
+    
+    if (!dataset) {
+      console.error(`❌ Dataset not found: ${datasetId}`);
+      return;
+    }
+
+    try {
+      console.log(`🛣️ Loading dataset: ${dataset.id} (including roads if requested)`);
+      await this.loadDataset(dataset);
+      
+      // Make the loaded dataset visible
+      const layer = this.loadedLayers.get(datasetId);
+      if (layer) {
+        layer.visible = true;
+      }
+      
+      console.log(`✅ Successfully loaded and made visible: ${dataset.id}`);
+    } catch (error) {
+      console.error(`❌ Failed to load dataset ${dataset.id}:`, error);
+      console.log(`⚠️ If this is roads dataset, it might have geometry validation issues but will still attempt to display`);
+    }
+  }
+
+  hideAllDatasets(): void {
+    console.log('🙈 Hiding all datasets');
+    this.loadedLayers.forEach((layer, id) => {
+      layer.visible = false;
+      console.log(`👁️ Hidden dataset: ${id}`);
+    });
+  }
+
+  showOnlyDataset(datasetId: string): void {
+    console.log(`👁️ Showing only dataset: ${datasetId}`);
+    this.loadedLayers.forEach((layer, id) => {
+      layer.visible = (id === datasetId);
+      console.log(`👁️ ${id}: ${layer.visible ? 'visible' : 'hidden'}`);
+    });
   }
 
   private async loadDataset(config: AbuDhabiDataConfig) {
@@ -370,18 +497,208 @@ export class AbuDhabiRealDataService {
     console.log(`✅ Found layer ${layerId}, executing query...`);
 
     try {
+      // Enhanced where clause for analytical queries
+      let whereClause = query.where || '1=1';
+      let isAnalyticalQuery = false;
+      
+      // Handle analytical queries for building levels
+      if (layerId === 'buildings_real' && whereClause.includes('levels')) {
+        whereClause = this.parseAnalyticalQuery(whereClause);
+        isAnalyticalQuery = true;
+        console.log(`🏗️ Enhanced building levels query: ${whereClause}`);
+      }
+      
       const queryResult = await layer.queryFeatures({
-        where: query.where || '1=1',
+        where: whereClause,
         outFields: ['*'],
         returnGeometry: true
       });
 
       console.log(`🔍 Query result for ${layerId}: ${queryResult.features.length} features`);
+      
+      // For ALL real dataset queries, gather statistics for chat response
+      if (layerId.endsWith('_real')) {
+        console.log(`📊 GATHERING STATISTICS FOR ${layerId}...`);
+        
+        // Get total count of all features in this dataset
+        const totalQuery = await layer.queryFeatures({
+          where: '1=1',
+          returnGeometry: false,
+          returnCountOnly: true
+        });
+        
+        console.log(`🔍 Total query result for ${layerId}:`, totalQuery);
+        let totalFeatures = totalQuery.count || 0;
+        
+        // Fallback: if returnCountOnly doesn't work, use the features array length
+        if (totalFeatures === 0) {
+          console.warn(`⚠️ returnCountOnly returned 0, trying alternate method...`);
+          const allFeaturesQuery = await layer.queryFeatures({
+            where: '1=1',
+            returnGeometry: false,
+            outFields: ['OBJECTID']
+          });
+          totalFeatures = allFeaturesQuery.features.length;
+          console.log(`🔢 Fallback count method: found ${totalFeatures} total features`);
+        }
+        const matchingFeatures = queryResult.features.length;
+        
+        // If totalFeatures is still 0, use matchingFeatures as total (assuming query returned all features)
+        if (totalFeatures === 0 && matchingFeatures > 0) {
+          totalFeatures = matchingFeatures;
+          console.log(`🔧 Using matchingFeatures (${matchingFeatures}) as totalFeatures since count query failed`);
+        }
+        
+        const percentage = totalFeatures > 0 ? ((matchingFeatures / totalFeatures) * 100).toFixed(1) : '100';
+        
+        console.log(`📊 Statistical Analysis for ${layerId}: ${matchingFeatures} features out of ${totalFeatures} total (${percentage}%)`);
+        
+        // Determine query type
+        const queryType = (layerId === 'buildings_real' && isAnalyticalQuery) ? 'analytical' : 'general';
+        
+        // Add statistics to the query result for use in chat responses
+        queryResult.statistics = {
+          totalFeatures: totalFeatures,
+          matchingFeatures: matchingFeatures,
+          percentage: percentage,
+          queryType: queryType,
+          layerType: layerId.replace('_real', '')
+        };
+        
+        console.log(`📊 ADDED STATISTICS TO QUERY RESULT FOR ${layerId}:`, queryResult.statistics);
+        
+        // Debug building level data for analytical queries
+        if (layerId === 'buildings_real' && isAnalyticalQuery) {
+          if (queryResult.features.length > 0) {
+            console.log(`🏗️ Sample building level data:`, 
+              queryResult.features.slice(0, 3).map(f => ({
+                name: f.attributes.name,
+                levels: f.attributes['building:levels'] || f.attributes['building_levels'],
+                id: f.attributes.OBJECTID
+              }))
+            );
+          } else {
+            console.warn(`⚠️ No buildings found matching the level criteria`);
+          }
+        }
+      }
+      
+      // Apply conditional highlighting for analytical queries
+      if (isAnalyticalQuery && layerId === 'buildings_real') {
+        await this.highlightAnalyticalResults(layerId, queryResult);
+      }
+      
       return queryResult;
     } catch (error) {
       console.error(`Error querying layer ${layerId}:`, error);
       return null;
     }
+  }
+
+  private parseAnalyticalQuery(whereClause: string): string {
+    // Parse building level queries like "more than 16 levels"
+    const levelPatterns = [
+      { pattern: /more than (\d+) levels?/i, operator: '>' },
+      { pattern: /greater than (\d+) levels?/i, operator: '>' },
+      { pattern: /over (\d+) levels?/i, operator: '>' },
+      { pattern: /above (\d+) levels?/i, operator: '>' },
+      { pattern: /(\d+)\+ levels?/i, operator: '>=' },
+      { pattern: /at least (\d+) levels?/i, operator: '>=' },
+      { pattern: /minimum (\d+) levels?/i, operator: '>=' },
+      { pattern: /less than (\d+) levels?/i, operator: '<' },
+      { pattern: /under (\d+) levels?/i, operator: '<' },
+      { pattern: /below (\d+) levels?/i, operator: '<' },
+      { pattern: /exactly (\d+) levels?/i, operator: '=' },
+      { pattern: /(\d+) levels? exactly/i, operator: '=' }
+    ];
+
+    for (const { pattern, operator } of levelPatterns) {
+      const match = whereClause.match(pattern);
+      if (match) {
+        const levelValue = match[1];
+        console.log(`📊 Analytical query detected: ${operator} ${levelValue} levels`);
+        
+        // Convert to ArcGIS field query - use CAST for numeric comparison
+        // The field name is "building:levels" and values are strings like "6"
+        const fieldExpression = `CAST("building:levels" AS INTEGER)`;
+        
+        if (operator === '>=' && levelValue) {
+          return `${fieldExpression} >= ${levelValue}`;
+        } else if (operator === '>' && levelValue) {
+          return `${fieldExpression} > ${levelValue}`;
+        } else if (operator === '<' && levelValue) {
+          return `${fieldExpression} < ${levelValue}`;
+        } else if (operator === '=' && levelValue) {
+          return `${fieldExpression} = ${levelValue}`;
+        }
+      }
+    }
+
+    return whereClause;
+  }
+
+  private async highlightAnalyticalResults(layerId: string, queryResult: any): Promise<void> {
+    console.log(`🎨 Applying analytical highlighting for ${queryResult.features.length} matching buildings`);
+    
+    // Debug: Log available field names to understand the schema
+    if (queryResult.features.length > 0) {
+      const sampleAttributes = queryResult.features[0].attributes;
+      console.log(`🔍 Available fields in building data:`, Object.keys(sampleAttributes));
+      console.log(`🏗️ Sample building levels field:`, sampleAttributes['building:levels'] || sampleAttributes['building_levels'] || 'NOT FOUND');
+    }
+    
+    const layer = this.getLayerById(layerId);
+    if (!layer) return;
+
+    // Create a new renderer that highlights matching features in red
+    const highlightRenderer = {
+      type: 'unique-value',
+      field: 'OBJECTID', // Use a unique field
+      defaultSymbol: {
+        type: 'simple-fill',
+        color: [156, 163, 175, 0.4], // Gray for non-matching buildings
+        outline: {
+          color: [156, 163, 175, 0.8],
+          width: 1
+        }
+      },
+      uniqueValueInfos: queryResult.features.map((feature: any) => ({
+        value: feature.attributes.OBJECTID,
+        symbol: {
+          type: 'simple-fill',
+          color: [239, 68, 68, 0.7], // Red for matching buildings
+          outline: {
+            color: [220, 38, 38, 0.9],
+            width: 2
+          }
+        }
+      }))
+    };
+
+    // Apply the new renderer
+    layer.renderer = highlightRenderer;
+    console.log(`🔴 Applied red highlighting to ${queryResult.features.length} buildings matching analytical criteria`);
+  }
+
+  resetBuildingColors(): void {
+    const layer = this.getLayerById('buildings_real');
+    if (!layer) return;
+
+    // Reset to original renderer
+    const originalRenderer = this.createRenderer({
+      id: 'buildings_real',
+      title: 'Abu Dhabi Buildings',
+      description: 'Building structures, landmarks, and architectural features',
+      file: '/data/BuildingStructures.geojson',
+      geometry_type: 'polygon',
+      category: 'urban',
+      color: '#f59e0b',
+      icon: 'building',
+      visible: true
+    });
+
+    layer.renderer = originalRenderer;
+    console.log(`🎨 Reset buildings to original orange color`);
   }
 }
 

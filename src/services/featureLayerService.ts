@@ -186,7 +186,7 @@ export class FeatureLayerService {
     }
   }
 
-  async highlightFeatures(features: any[]): Promise<void> {
+  async highlightFeatures(features: any[], options: { skipPolygons?: boolean } = {}): Promise<void> {
     if (!features || features.length === 0) return;
 
     try {
@@ -195,7 +195,21 @@ export class FeatureLayerService {
       // Clear existing highlights
       this.clearGraphics();
 
-      // Add highlighted graphics
+      // Filter features if skipPolygons is enabled
+      let featuresToHighlight = features;
+      if (options.skipPolygons) {
+        featuresToHighlight = features.filter(f => 
+          f.geometry?.type !== 'polygon' && f.geometry?.type !== 'extent'
+        );
+        console.log(`🏗️ Filtered out ${features.length - featuresToHighlight.length} polygon features from highlighting`);
+      }
+
+      if (featuresToHighlight.length === 0) {
+        console.log(`📍 No features to highlight after filtering`);
+        return;
+      }
+
+      // Add highlighted graphics (yellow circles for points/lines only)
       const highlightSymbol = {
         type: 'simple-marker',
         color: [255, 255, 0, 0.8],
@@ -206,7 +220,7 @@ export class FeatureLayerService {
         }
       };
 
-      await this.addGraphicsToMap(features, highlightSymbol);
+      await this.addGraphicsToMap(featuresToHighlight, highlightSymbol);
 
       // Zoom to features if there are any
       if (features.length > 0 && this.view) {
