@@ -116,11 +116,8 @@ const MapViewer = () => {
     window.location.reload();
   };
 
-  // Initialize feature layer system when map is ready
-  useEffect(() => {
-    if (viewRef.current) {
-      // Set up feature layer initialization
-      (window as any).initializeFeatureLayers = (view: any) => {
+  // Set up feature layer initialization function immediately
+  (window as any).initializeFeatureLayers = (view: any) => {
         console.log('🗃️ Setting up feature layer system...');
         nlpQueryService.setMapView(view);
         geodatabaseService.setMapView(view);
@@ -141,23 +138,21 @@ const MapViewer = () => {
         }).catch(error => {
           console.error('❌ Error initializing layers:', error);
         });
-      };
-      
-      // Test functions for debugging
-      (window as any).testQuery = testQuery;
-      (window as any).testSchools = () => testQuery('Show me all schools in Abu Dhabi', 'education_0');
-      (window as any).testBusStops = () => handleNLQuery('Show all bus stops in Abu Dhabi');
-      (window as any).testNLPService = nlpQueryService;
-      (window as any).testPolice = () => testQuery('Show me all police stations in Abu Dhabi', 'public_safety_0');
-      (window as any).testAgriculture = () => testQuery('Show me all crop fields in Abu Dhabi', 'agriculture_0');
-      
-      // Feature layer test functions
-      (window as any).testNLP = (query: string) => handleNLQuery(query);
-      (window as any).testFeatureQuery = () => handleNLQuery('Show all schools in Central Abu Dhabi');
-      (window as any).testGeodatabase = () => handleNLQuery('Show education facilities from geodatabase');
-      (window as any).testGDBHealthcare = () => handleNLQuery('Find healthcare facilities in GDB data');
-    }
-  }, [viewRef.current, testQuery, nlpQueryService]);
+  };
+  
+  // Set up test functions for debugging
+  (window as any).testQuery = testQuery;
+  (window as any).testSchools = () => testQuery('Show me all schools in Abu Dhabi', 'education_0');
+  (window as any).testBusStops = () => handleNLQuery('Show all bus stops in Abu Dhabi');
+  (window as any).testNLPService = nlpQueryService;
+  (window as any).testPolice = () => testQuery('Show me all police stations in Abu Dhabi', 'public_safety_0');
+  (window as any).testAgriculture = () => testQuery('Show me all crop fields in Abu Dhabi', 'agriculture_0');
+  
+  // Feature layer test functions
+  (window as any).testNLP = (query: string) => handleNLQuery(query);
+  (window as any).testFeatureQuery = () => handleNLQuery('Show all schools in Central Abu Dhabi');
+  (window as any).testGeodatabase = () => handleNLQuery('Show education facilities from geodatabase');
+  (window as any).testGDBHealthcare = () => handleNLQuery('Find healthcare facilities in GDB data');
 
   console.log('🎨 Rendering MapViewer with state:', {
     isLoading,
