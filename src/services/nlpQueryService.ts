@@ -131,7 +131,9 @@ export class NLPQueryService {
 
   setMapView(view: any) {
     this.view = view;
-    console.log('🗺️ Map view set for NLPQueryService');
+    this.featureLayerService.setMapView(view);
+    this.geodatabaseService.setMapView(view);
+    console.log('🗺️ Map view set for NLPQueryService and its internal services');
   }
 
   setAbuDhabiRealDataService(service: AbuDhabiRealDataService) {
@@ -176,17 +178,28 @@ export class NLPQueryService {
   private buildQueryString(query: string): string {
     const queryLower = query.toLowerCase();
     
-    // Look for location-based filters
+    // For Abu Dhabi datasets, skip location filtering since they're already geographically filtered
+    if (queryLower.includes('abu dhabi') || queryLower.includes('abu')) {
+      console.log(`🏙️ Abu Dhabi query detected, skipping location filter (data already geographically filtered)`);
+      return '1=1'; // Return all features since they're already in Abu Dhabi
+    }
+    
+    // Look for other location-based filters
     const locationPatterns = [
-      { pattern: /\bin\s+([a-z\s]+?)(?:\s|$)/i, field: 'District' },
-      { pattern: /\bnear\s+([a-z\s]+?)(?:\s|$)/i, field: 'District' },
-      { pattern: /\baround\s+([a-z\s]+?)(?:\s|$)/i, field: 'District' }
+      { pattern: /\bin\s+([a-z\s]+?)(?:\s|$)/i, field: 'name' },
+      { pattern: /\bnear\s+([a-z\s]+?)(?:\s|$)/i, field: 'name' },
+      { pattern: /\baround\s+([a-z\s]+?)(?:\s|$)/i, field: 'name' }
     ];
 
     for (const locPattern of locationPatterns) {
       const match = query.match(locPattern.pattern);
       if (match) {
         const location = match[1].trim();
+        // Skip if location is Abu Dhabi related
+        if (location.toLowerCase().includes('abu') || location.toLowerCase().includes('dhabi')) {
+          console.log(`🏙️ Abu Dhabi location detected, skipping filter`);
+          return '1=1';
+        }
         console.log(`📍 Found location filter: ${location}`);
         return `${locPattern.field} LIKE '%${location}%'`;
       }

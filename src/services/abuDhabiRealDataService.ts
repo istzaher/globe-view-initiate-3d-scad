@@ -99,13 +99,20 @@ export class AbuDhabiRealDataService {
         category: 'transportation',
         color: '#374151',
         icon: 'route',
-        visible: false
+        visible: false // Disabled due to large file size and geometry validation errors
       }
     ];
 
     for (const dataset of datasets) {
       try {
         console.log(`🔄 Loading dataset: ${dataset.id}`);
+        
+        // Skip roads dataset to avoid validation errors
+        if (dataset.id === 'roads_real') {
+          console.log(`⏭️ Skipping ${dataset.id} (disabled due to validation issues)`);
+          continue;
+        }
+        
         await this.loadDataset(dataset);
         console.log(`✅ Completed loading: ${dataset.id}`);
       } catch (error) {

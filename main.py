@@ -112,258 +112,67 @@ class LLMResponse(BaseModel):
     success: bool
     error: Optional[str] = None
 
-# SCAD GenAI Tool - Enhanced dataset configuration for POC demonstration
-# Agriculture, Education, and Public Safety datasets with advanced spatial analysis capabilities
-DATASETS = {
-    # AGRICULTURE DATASETS - 6 layers for comprehensive agricultural analysis
-    "agriculture_0": {
-        "name": "Abu Dhabi Crop Fields",
-        "description": "Agricultural crop fields and farming areas in Abu Dhabi",
-        "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Countries_(Generalized)/FeatureServer/0/query",
-        "layer_id": 0,
-        "service_name": "agriculture",
+# SCAD GenAI Tool - Real Abu Dhabi datasets configuration
+# Real spatial datasets loaded from public/data/ via frontend
+REAL_ABU_DHABI_DATASETS = {
+    # REAL ABU DHABI DATASETS - Loaded from public/data/ via frontend
+    "bus_stops_real": {
+        "name": "Abu Dhabi Bus Stops",
+        "description": "ITC public transportation stops with routes and schedules",
+        "file": "bus_stops_query.geojson",
+        "geometry_type": "Point",
+        "category": "Transportation",
+        "features": 76,
+        "real_data": True
+    },
+    "mosques_real": {
+        "name": "Abu Dhabi Mosques", 
+        "description": "Islamic places of worship and prayer facilities",
+        "file": "mosques_query.geojson",
         "geometry_type": "Polygon",
-        "requires_auth": False,
-        "category": "Agriculture",
-        "fields": ["CropType", "Area_HA", "Yield_Ton", "IrrigationType", "District", "FarmSize", "ProductionYear"],
-        "mock_data": True,
-        "focus_area": "Abu Dhabi, UAE"
+        "category": "Religious",
+        "features": 35,
+        "real_data": True
     },
-    "agriculture_1": {
-        "name": "Abu Dhabi Irrigation Systems",
-        "description": "Agricultural irrigation infrastructure and water distribution in Abu Dhabi",
-        "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Countries_(Generalized)/FeatureServer/0/query",
-        "layer_id": 1,
-        "service_name": "agriculture",
-        "geometry_type": "Polyline",
-        "requires_auth": False,
-        "category": "Agriculture",
-        "fields": ["SystemType", "Capacity_L", "Coverage_HA", "Status", "District", "InstallYear", "Efficiency"],
-        "mock_data": True,
-        "focus_area": "Abu Dhabi, UAE"
-    },
-    "agriculture_2": {
-        "name": "Abu Dhabi Farming Equipment",
-        "description": "Agricultural machinery and equipment locations in Abu Dhabi",
-        "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Countries_(Generalized)/FeatureServer/0/query",
-        "layer_id": 2,
-        "service_name": "agriculture",
-        "geometry_type": "Point",
-        "requires_auth": False,
-        "category": "Agriculture",
-        "fields": ["EquipmentType", "Capacity", "Status", "District", "Owner", "LastMaintenance", "FuelType"],
-        "mock_data": True,
-        "focus_area": "Abu Dhabi, UAE"
-    },
-    "agriculture_3": {
-        "name": "Abu Dhabi Storage Facilities",
-        "description": "Agricultural storage and processing facilities in Abu Dhabi",
-        "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Countries_(Generalized)/FeatureServer/0/query",
-        "layer_id": 3,
-        "service_name": "agriculture",
+    "parks_real": {
+        "name": "Abu Dhabi Parks",
+        "description": "Public parks, green spaces, and recreational areas", 
+        "file": "Parks_In_Bbox.geojson",
         "geometry_type": "Polygon",
-        "requires_auth": False,
-        "category": "Agriculture",
-        "fields": ["FacilityType", "Capacity_Ton", "StorageType", "District", "Owner", "Capacity_Used", "Temperature"],
-        "mock_data": True,
-        "focus_area": "Abu Dhabi, UAE"
+        "category": "Recreation",
+        "features": 15,
+        "real_data": True
     },
-    "agriculture_4": {
-        "name": "Abu Dhabi Soil Quality Zones",
-        "description": "Soil quality and fertility assessment areas in Abu Dhabi",
-        "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Countries_(Generalized)/FeatureServer/0/query",
-        "layer_id": 4,
-        "service_name": "agriculture",
+    "parking_real": {
+        "name": "Abu Dhabi Parking",
+        "description": "Parking facilities and lots throughout the city",
+        "file": "Parking_Areas.geojson", 
         "geometry_type": "Polygon",
-        "requires_auth": False,
-        "category": "Agriculture",
-        "fields": ["SoilType", "Quality_Index", "pH_Level", "Nutrients", "District", "SurveyYear", "Recommendations"],
-        "mock_data": True,
-        "focus_area": "Abu Dhabi, UAE"
+        "category": "Infrastructure",
+        "features": 91,
+        "real_data": True
     },
-    "agriculture_5": {
-        "name": "Abu Dhabi Weather Stations",
-        "description": "Agricultural weather monitoring stations in Abu Dhabi",
-        "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Countries_(Generalized)/FeatureServer/0/query",
-        "layer_id": 5,
-        "service_name": "agriculture",
-        "geometry_type": "Point",
-        "requires_auth": False,
-        "category": "Agriculture",
-        "fields": ["StationType", "DataTypes", "District", "Altitude", "LastUpdate", "Coverage_Radius", "Status"],
-        "mock_data": True,
-        "focus_area": "Abu Dhabi, UAE"
-    },
-    
-    # EDUCATION DATASETS - 6 layers for comprehensive educational analysis
-    "education_0": {
-        "name": "Abu Dhabi Schools",
-        "description": "Educational institutions and schools in Abu Dhabi",
-        "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Countries_(Generalized)/FeatureServer/0/query",
-        "layer_id": 0,
-        "service_name": "education",
-        "geometry_type": "Point",
-        "requires_auth": False,
-        "category": "Education",
-        "fields": ["SchoolName", "SchoolType", "GradeLevels", "StudentCount", "District", "Rating", "Capacity", "Language"],
-        "mock_data": True,
-        "focus_area": "Abu Dhabi, UAE"
-    },
-    "education_1": {
-        "name": "Abu Dhabi Universities",
-        "description": "Higher education institutions and universities in Abu Dhabi",
-        "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Countries_(Generalized)/FeatureServer/0/query",
-        "layer_id": 1,
-        "service_name": "education",
-        "geometry_type": "Polygon",
-        "requires_auth": False,
-        "category": "Education",
-        "fields": ["UniversityName", "Type", "Programs", "StudentCount", "District", "Ranking", "Campus_Area", "Faculties"],
-        "mock_data": True,
-        "focus_area": "Abu Dhabi, UAE"
-    },
-    "education_2": {
-        "name": "Abu Dhabi Libraries",
-        "description": "Public and educational libraries in Abu Dhabi",
-        "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Countries_(Generalized)/FeatureServer/0/query",
-        "layer_id": 2,
-        "service_name": "education",
-        "geometry_type": "Point",
-        "requires_auth": False,
-        "category": "Education",
-        "fields": ["LibraryName", "Type", "BookCount", "District", "Services", "OpeningHours", "Capacity", "DigitalResources"],
-        "mock_data": True,
-        "focus_area": "Abu Dhabi, UAE"
-    },
-    "education_3": {
-        "name": "Abu Dhabi Training Centers",
-        "description": "Professional and vocational training facilities in Abu Dhabi",
-        "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Countries_(Generalized)/FeatureServer/0/query",
-        "layer_id": 3,
-        "service_name": "education",
-        "geometry_type": "Point",
-        "requires_auth": False,
-        "category": "Education",
-        "fields": ["CenterName", "Specialization", "Programs", "Capacity", "District", "Certification", "Duration", "Language"],
-        "mock_data": True,
-        "focus_area": "Abu Dhabi, UAE"
-    },
-    "education_4": {
-        "name": "Abu Dhabi Research Facilities",
-        "description": "Research institutions and laboratories in Abu Dhabi",
-        "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Countries_(Generalized)/FeatureServer/0/query",
-        "layer_id": 4,
-        "service_name": "education",
-        "geometry_type": "Polygon",
-        "requires_auth": False,
-        "category": "Education",
-        "fields": ["FacilityName", "ResearchArea", "Equipment", "District", "Funding", "Publications", "Collaborations", "Status"],
-        "mock_data": True,
-        "focus_area": "Abu Dhabi, UAE"
-    },
-    "education_5": {
-        "name": "Abu Dhabi Student Housing",
-        "description": "Student accommodation and dormitories in Abu Dhabi",
-        "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Countries_(Generalized)/FeatureServer/0/query",
-        "layer_id": 5,
-        "service_name": "education",
-        "geometry_type": "Polygon",
-        "requires_auth": False,
-        "category": "Education",
-        "fields": ["HousingName", "Type", "Capacity", "District", "Amenities", "Rent", "Availability", "NearbySchools"],
-        "mock_data": True,
-        "focus_area": "Abu Dhabi, UAE"
-    },
-    
-    # PUBLIC SAFETY DATASETS - 6 layers for comprehensive safety analysis
-    "public_safety_0": {
-        "name": "Abu Dhabi Police Stations",
-        "description": "Law enforcement facilities and police stations in Abu Dhabi",
-        "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Countries_(Generalized)/FeatureServer/0/query",
-        "layer_id": 0,
-        "service_name": "public_safety",
-        "geometry_type": "Point",
-        "requires_auth": False,
-        "category": "Public Safety",
-        "fields": ["StationName", "Type", "OfficerCount", "District", "Services", "ResponseTime", "Coverage_Area", "Equipment"],
-        "mock_data": True,
-        "focus_area": "Abu Dhabi, UAE"
-    },
-    "public_safety_1": {
-        "name": "Abu Dhabi Fire Stations",
-        "description": "Fire and rescue service facilities in Abu Dhabi",
-        "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Countries_(Generalized)/FeatureServer/0/query",
-        "layer_id": 1,
-        "service_name": "public_safety",
-        "geometry_type": "Point",
-        "requires_auth": False,
-        "category": "Public Safety",
-        "fields": ["StationName", "Type", "FirefighterCount", "District", "Equipment", "ResponseTime", "Coverage_Area", "Specializations"],
-        "mock_data": True,
-        "focus_area": "Abu Dhabi, UAE"
-    },
-    "public_safety_2": {
-        "name": "Abu Dhabi Hospitals",
-        "description": "Medical facilities and hospitals in Abu Dhabi",
-        "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Countries_(Generalized)/FeatureServer/0/query",
-        "layer_id": 2,
-        "service_name": "public_safety",
-        "geometry_type": "Point",
-        "requires_auth": False,
-        "category": "Public Safety",
-        "fields": ["HospitalName", "Type", "BedCount", "District", "Specialties", "EmergencyServices", "Capacity", "Rating"],
-        "mock_data": True,
-        "focus_area": "Abu Dhabi, UAE"
-    },
-    "public_safety_3": {
-        "name": "Abu Dhabi Emergency Services",
-        "description": "Emergency response and ambulance services in Abu Dhabi",
-        "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Countries_(Generalized)/FeatureServer/0/query",
-        "layer_id": 3,
-        "service_name": "public_safety",
-        "geometry_type": "Point",
-        "requires_auth": False,
-        "category": "Public Safety",
-        "fields": ["ServiceName", "Type", "VehicleCount", "District", "ResponseTime", "Coverage_Area", "Specializations", "Status"],
-        "mock_data": True,
-        "focus_area": "Abu Dhabi, UAE"
-    },
-    "public_safety_4": {
-        "name": "Abu Dhabi Safety Zones",
-        "description": "Designated safety and emergency zones in Abu Dhabi",
-        "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Countries_(Generalized)/FeatureServer/0/query",
-        "layer_id": 4,
-        "service_name": "public_safety",
-        "geometry_type": "Polygon",
-        "requires_auth": False,
-        "category": "Public Safety",
-        "fields": ["ZoneName", "Type", "Area_HA", "District", "SafetyLevel", "Regulations", "Capacity", "Accessibility"],
-        "mock_data": True,
-        "focus_area": "Abu Dhabi, UAE"
-    },
-    "public_safety_5": {
-        "name": "Abu Dhabi Surveillance Systems",
-        "description": "Security cameras and monitoring systems in Abu Dhabi",
-        "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Countries_(Generalized)/FeatureServer/0/query",
-        "layer_id": 5,
-        "service_name": "public_safety",
-        "geometry_type": "Point",
-        "requires_auth": False,
-        "category": "Public Safety",
-        "fields": ["CameraID", "Type", "Coverage_Radius", "District", "Resolution", "Status", "Recording", "Location"],
-        "mock_data": True,
-        "focus_area": "Abu Dhabi, UAE"
+    "buildings_real": {
+        "name": "Abu Dhabi Buildings",
+        "description": "Building structures, landmarks, and architectural features",
+        "file": "BuildingStructures.geojson",
+        "geometry_type": "Polygon", 
+        "category": "Urban",
+        "features": 1398,
+        "real_data": True
     }
 }
 
-# Dataset configurations are now handled within the parse_simple_query function
-# for better dataset-aware keyword matching
+# Legacy mock datasets removed to prevent LLM confusion
+
+# Removed all legacy mock datasets (agriculture, education, public safety)
+# Now using only real Abu Dhabi datasets from REAL_ABU_DHABI_DATASETS
 
 def get_dataset_config(dataset_name: str):
     """Get dataset configuration by name."""
-    if dataset_name not in DATASETS:
+    if dataset_name not in REAL_ABU_DHABI_DATASETS:
         raise HTTPException(status_code=400, detail=f"Unknown dataset: {dataset_name}")
-    return DATASETS[dataset_name]
+    return REAL_ABU_DHABI_DATASETS.get(dataset_name, {})
 
 def generate_abu_dhabi_mock_data(dataset_config: dict, query: str) -> dict:
     """Generate mock Abu Dhabi data for SCAD POC demonstration."""
@@ -730,7 +539,7 @@ async def get_available_datasets():
                 "requires_auth": config.get("requires_auth", False),
                 "auth_server": config.get("auth_server") if config.get("requires_auth") else None
             }
-            for dataset_id, config in DATASETS.items()
+            for dataset_id, config in REAL_ABU_DHABI_DATASETS.items()
         ]
     }
 
@@ -738,7 +547,7 @@ async def get_available_datasets():
 async def get_services_info():
     """Get information about configured services."""
     services = {}
-    for dataset_id, config in DATASETS.items():
+    for dataset_id, config in REAL_ABU_DHABI_DATASETS.items():
         service_name = config["service_name"]
         if service_name not in services:
             services[service_name] = {
@@ -1325,7 +1134,7 @@ def generate_chatbot_response(message: str, query_type: str, context: dict, requ
     # Handle greetings
     if query_type == 'greeting':
         return {
-            "message": "Hello! I'm the SCAD GenAI Assistant. I can help you analyze Abu Dhabi's spatial data including education, public safety, and agriculture datasets. I can also assist with Abu Dhabi District Pulse livability indicators. What would you like to explore?",
+            "message": "Hello! I'm the SCAD GenAI Assistant. I can help you analyze Abu Dhabi's real spatial datasets including transportation (bus stops), religious sites (mosques), recreation (parks), infrastructure (parking), and urban features (buildings). What would you like to explore?",
             "type": "suggestion",
             "followUpSuggestions": get_default_suggestions()
         }
@@ -1333,7 +1142,7 @@ def generate_chatbot_response(message: str, query_type: str, context: dict, requ
     # Handle help requests
     if 'help' in lower_message or 'what can you do' in lower_message:
         return {
-            "message": "I can help you with:\n\n• **Spatial Queries**: 'Show me all schools in Abu Dhabi', 'Find hospitals near police stations'\n• **Analysis**: 'Analyze education accessibility', 'Compare agricultural productivity'\n• **District Pulse**: 'Show livability indicators', 'Compare districts'\n• **Multi-dataset**: 'Find schools within 2km of hospitals'\n\nWhat would you like to explore?",
+            "message": "I can help you with:\n\n• **Spatial Queries**: 'Show me all bus stops in Abu Dhabi', 'Find mosques near parks'\n• **Transportation**: 'Show ITC bus routes and stops'\n• **Infrastructure**: 'Find parking areas near buildings'\n• **Religious Sites**: 'Show all mosques and prayer facilities'\n• **Recreation**: 'Find parks and green spaces'\n\nWhat would you like to explore?",
             "type": "explanation",
             "followUpSuggestions": get_default_suggestions()
         }
@@ -1341,7 +1150,7 @@ def generate_chatbot_response(message: str, query_type: str, context: dict, requ
     # Handle dataset inquiries
     if 'dataset' in lower_message or 'available data' in lower_message:
         return {
-            "message": "Here are the available datasets for Abu Dhabi analysis:\n\n**Education (6 layers):**\n• Schools, Universities, Libraries\n• Training Centers, Research Facilities, Student Housing\n\n**Public Safety (6 layers):**\n• Police Stations, Fire Stations, Hospitals\n• Emergency Services, Safety Zones, Surveillance Systems\n\n**Agriculture (6 layers):**\n• Crop Fields, Irrigation Systems, Farming Equipment\n• Storage Facilities, Soil Quality Zones, Weather Stations\n\nWhich dataset interests you?",
+            "message": "Here are the available real Abu Dhabi datasets:\n\n**Transportation:**\n• Bus Stops (76 ITC public transit stops with routes and schedules)\n\n**Religious:**\n• Mosques (35+ Islamic places of worship and prayer facilities)\n\n**Recreation:**\n• Parks (15+ public parks, green spaces, and recreational areas)\n\n**Infrastructure:**\n• Parking Areas (91 parking facilities and lots throughout the city)\n\n**Urban:**\n• Buildings (1,398 building structures, landmarks, and architectural features)\n\nWhich dataset would you like to explore?",
             "type": "explanation",
             "followUpSuggestions": get_default_suggestions()
         }
@@ -1377,7 +1186,7 @@ def generate_chatbot_response(message: str, query_type: str, context: dict, requ
     
     # Default response
     return {
-        "message": f"I understand you're asking about '{message}'. Let me help you with that. Could you be more specific about what you'd like to explore? For example:\n\n• 'Show me all schools in Abu Dhabi'\n• 'Analyze healthcare accessibility'\n• 'Find agricultural areas near water sources'",
+        "message": f"I understand you're asking about '{message}'. Let me help you with that. Could you be more specific about what you'd like to explore? For example:\n\n• 'Show me all bus stops in Abu Dhabi'\n• 'Find mosques near city center'\n• 'Show parks and green spaces'",
         "type": "suggestion",
         "metadata": {
             "queryType": "general",
@@ -1470,26 +1279,26 @@ def extract_spatial_operation(message: str) -> str:
     return 'spatial'
 
 def get_default_suggestions() -> List[Dict[str, Any]]:
-    """Get default follow-up suggestions"""
+    """Get default follow-up suggestions for real Abu Dhabi datasets"""
     return [
         {
-            "question": "Show me all schools in Abu Dhabi",
+            "question": "Show me all bus stops in Abu Dhabi",
             "type": "spatial",
             "confidence": 0.9
         },
         {
-            "question": "Analyze Abu Dhabi District Pulse livability indicators",
-            "type": "analytical",
+            "question": "Find mosques near city center",
+            "type": "spatial",
             "confidence": 0.9
         },
         {
-            "question": "Find police stations near hospitals",
+            "question": "Show all parks and green spaces",
             "type": "spatial",
             "confidence": 0.8
         },
         {
-            "question": "Compare agricultural productivity across districts",
-            "type": "comparative",
+            "question": "Find parking areas near buildings",
+            "type": "spatial",
             "confidence": 0.8
         },
         {

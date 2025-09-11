@@ -1,4 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
+
+// Suppress Esri deprecation warnings for cleaner console output
+const originalWarn = console.warn;
+console.warn = function(...args) {
+  const message = args[0];
+  if (typeof message === 'string' && (
+    message.includes('🛑 DEPRECATED') ||
+    message.includes('Graphics layer not initialized')
+  )) {
+    return; // Suppress Esri deprecation warnings and graphics layer warnings
+  }
+  originalWarn.apply(console, args);
+};
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';

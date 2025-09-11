@@ -23,17 +23,7 @@ export class FeatureLayerService {
     console.log('🗺️ Map view set for FeatureLayerService');
 
     // Initialize graphics layer for query results
-    try {
-      const [GraphicsLayer] = await loadModules(['esri/layers/GraphicsLayer']);
-      this.graphicsLayer = new GraphicsLayer({
-        title: 'Query Results',
-        listMode: 'hide'
-      });
-      this.view.map.add(this.graphicsLayer);
-      console.log('✅ Graphics layer added for query results');
-    } catch (error) {
-      console.error('❌ Error initializing graphics layer:', error);
-    }
+    await this.initializeGraphicsLayer();
   }
 
   async addFeatureLayer(config: FeatureLayerConfig): Promise<any> {
@@ -123,10 +113,44 @@ export class FeatureLayerService {
     }
   }
 
+  private async initializeGraphicsLayer(): Promise<void> {
+    if (!this.view) {
+      console.error('❌ Map view not available for graphics layer initialization');
+      return;
+    }
+
+    if (this.graphicsLayer) {
+      console.log('✅ Graphics layer already initialized');
+      return;
+    }
+
+    try {
+      const [GraphicsLayer] = await loadModules(['esri/layers/GraphicsLayer']);
+      
+      this.graphicsLayer = new GraphicsLayer({
+        title: 'Query Results',
+        listMode: 'hide'
+      });
+      
+      this.view.map.add(this.graphicsLayer);
+      console.log('✅ Graphics layer initialized');
+    } catch (error) {
+      console.error('❌ Error initializing graphics layer:', error);
+    }
+  }
+
   async addGraphicsToMap(features: any[], symbol?: any): Promise<void> {
     if (!this.graphicsLayer) {
-      console.error('❌ Graphics layer not initialized');
-      return;
+      if (!this.view) {
+        console.warn('⚠️ Graphics layer and map view not available, skipping graphics display');
+        return;
+      }
+      console.warn('⚠️ Graphics layer not initialized, initializing now...');
+      await this.initializeGraphicsLayer();
+      if (!this.graphicsLayer) {
+        console.error('❌ Failed to initialize graphics layer');
+        return;
+      }
     }
 
     try {

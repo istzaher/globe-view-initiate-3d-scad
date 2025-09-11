@@ -213,7 +213,7 @@ export const useNLQuery = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<ProcessedResult[]>([]);
-  const [currentDataset, setCurrentDataset] = useState<string>('ev_charging');
+  const [currentDataset, setCurrentDataset] = useState<string>('bus_stops_real');
   const rendererService = new RendererService();
 
   // Helper function to dynamically load ESRI modules
@@ -543,10 +543,10 @@ export const useNLQuery = () => {
         console.warn(`⚠️ WARNING: Lost ${processedResults.length - addedCount} features during graphics creation!`);
         console.warn(`⚠️ This means some features were processed but failed to render on the map`);
       }
-    } else if (dataset.includes('ev_charging')) {
-      console.log(`🔋 EV CHARGING GRAPHICS SUMMARY for ${dataset}:`);
-      console.log(`🔋 Processed Results: ${processedResults.length}`);
-      console.log(`🔋 Point Graphics Added: ${pointGraphicsCount}`);
+    } else if (dataset.includes('bus_stops')) {
+      console.log(`🚌 BUS STOPS GRAPHICS SUMMARY for ${dataset}:`);
+      console.log(`🚌 Processed Results: ${processedResults.length}`);
+      console.log(`🚌 Point Graphics Added: ${pointGraphicsCount}`);
       console.log(`🔋 Success Rate: ${((pointGraphicsCount / processedResults.length) * 100).toFixed(1)}%`);
     }
   };
@@ -602,7 +602,7 @@ export const useNLQuery = () => {
     query: string, 
     view: ESRIView, 
     graphicsLayer: ESRIGraphicsLayer, 
-    dataset: string = 'ev_charging',
+    dataset: string = 'bus_stops_real',
     authToken?: string,
     clearGraphics: boolean = true
   ) => {
@@ -678,12 +678,10 @@ export const useNLQuery = () => {
         const whereClause = metadata?.where_clause || 'Unknown';
         
         // Provide helpful feedback for zero results
-        if (dataset.startsWith('ev_charging')) {
-          if (whereClause.includes('Fuel_Type_')) {
-            setError('⚡ No EV charging stations found matching your criteria. Try expanding your search area or using terms like "public charging stations" or "Tesla stations".');
-          } else {
-            setError('⚡ No EV charging stations found. The query might not have been understood correctly. Try: "Show EV charging stations" or "Find Tesla chargers near [location]".');
-          }
+        if (dataset.includes('bus_stops')) {
+          setError('🚌 No bus stops found matching your criteria. Try expanding your search area or using terms like "public transport" or "ITC stations".');
+        } else if (dataset.includes('mosques')) {
+          setError('🕌 No mosques found matching your criteria. Try expanding your search area or using terms like "Islamic worship" or "prayer facilities".');
         } else {
           setError(`📍 No results found for your query. WHERE clause used: ${whereClause}`);
         }
@@ -977,14 +975,14 @@ export const useNLQuery = () => {
           
           console.log(`✅ Valid feature coordinates: lat=${latitude}, lon=${longitude}, webMerc=${webMercatorX},${webMercatorY}`);
 
-          // Geographic validation based on dataset - RELAXED for water datasets
-          if (dataset.includes('ev_charging')) {
-            // EV charging stations should be in Sacramento area
-            if (latitude < 35 || latitude > 42 || longitude < -125 || longitude > -118) {
-              console.warn('❌ EV station coordinates outside Sacramento region, skipping:', latitude, longitude);
+          // Geographic validation based on dataset - Abu Dhabi region
+          if (dataset.includes('_real') || dataset.includes('abu_dhabi')) {
+            // Abu Dhabi datasets should be in UAE region
+            if (latitude < 20 || latitude > 30 || longitude < 50 || longitude > 60) {
+              console.warn('❌ Feature coordinates outside Abu Dhabi region, skipping:', latitude, longitude);
               continue;
             }
-            console.log(`✅ Valid EV charging station (Sacramento): ${latitude}, ${longitude}`);
+            console.log(`✅ Valid Abu Dhabi feature: ${latitude}, ${longitude}`);
           } else if (dataset.includes('la_mesa')) {
             // La Mesa datasets should be in San Diego area
             if (latitude < 32 || latitude > 34 || longitude < -118 || longitude > -116) {
@@ -1138,10 +1136,10 @@ export const useNLQuery = () => {
     dataset: string
   ): string => {
     const baseQueries: Record<string, string> = {
-      'ev_charging': "all Tesla charging stations",
-      'electrical_meter': "all residential electrical meters",
-      'service_panel': "all commercial service cabinets",
-      'tree_well': "all tree wells with outlets",
+      'bus_stops_real': "all bus stops in Abu Dhabi",
+      'mosques_real': "all mosques in Abu Dhabi",
+      'parks_real': "all parks in Abu Dhabi",
+      'parking_real': "all parking areas in Abu Dhabi",
       'acorn_light': "all acorn lights with outlets",
       'gas_meter': "all gas meters"
     };
@@ -1153,7 +1151,7 @@ export const useNLQuery = () => {
   const testQuery = async (
     view: ESRIView, 
     graphicsLayer: ESRIGraphicsLayer, 
-    dataset: string = 'ev_charging'
+    dataset: string = 'bus_stops_real'
   ) => {
     console.log('=== TESTING QUERY PIPELINE (SHOWS ALL RESULTS) ===');
     console.log('⚠️  This is a TEST FUNCTION that shows ALL results without location filtering');
