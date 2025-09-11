@@ -274,6 +274,7 @@ export class NLPQueryService {
 
   async processQuery(query: string): Promise<QueryResult> {
     console.log(`🚀 Processing query: "${query}"`);
+    console.log(`🔧 Service status: abuDhabiRealDataService=${!!this.abuDhabiRealDataService}`);
 
     try {
       const { layerId, queryString } = this.analyzeQuery(query);
