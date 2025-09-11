@@ -115,10 +115,12 @@ export class AbuDhabiRealDataService {
 
   private async loadDataset(config: AbuDhabiDataConfig) {
     try {
-      console.log(`📄 Loading ${config.title}...`);
+      console.log(`📄 Loading ${config.title} from ${config.file}...`);
 
       // Fetch the GeoJSON data
       const response = await fetch(config.file);
+      console.log(`📡 Fetch response for ${config.file}:`, response.status, response.statusText);
+      
       if (!response.ok) {
         throw new Error(`Failed to fetch ${config.file}: ${response.statusText}`);
       }
@@ -339,11 +341,16 @@ export class AbuDhabiRealDataService {
   }
 
   async queryLayer(layerId: string, query: any = {}) {
+    console.log(`🔍 Abu Dhabi Real Data Service - queryLayer called with: ${layerId}`);
+    console.log(`📊 Available layers:`, Array.from(this.loadedLayers.keys()));
+    
     const layer = this.getLayerById(layerId);
     if (!layer) {
-      console.warn(`Layer ${layerId} not found`);
+      console.warn(`❌ Layer ${layerId} not found in loaded layers`);
       return null;
     }
+    
+    console.log(`✅ Found layer ${layerId}, executing query...`);
 
     try {
       const queryResult = await layer.queryFeatures({
