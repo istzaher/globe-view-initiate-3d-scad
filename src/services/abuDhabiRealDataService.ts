@@ -42,7 +42,7 @@ export class AbuDhabiRealDataService {
         file: '/data/bus_stops_query.geojson',
         geometry_type: 'point',
         category: 'transportation',
-        color: '#2563eb',
+        color: '#1e40af',
         icon: 'bus',
         visible: true
       },
@@ -272,30 +272,33 @@ export class AbuDhabiRealDataService {
 
   private createRenderer(config: AbuDhabiDataConfig) {
     const color = this.hexToRgb(config.color);
+    console.log(`🎨 Creating renderer for ${config.id}: color=${config.color} -> RGB(${color.join(',')}) geometry=${config.geometry_type}`);
     
     if (config.geometry_type === 'point') {
+      // Enhanced point symbols for better visibility
       return {
         type: 'simple',
         symbol: {
           type: 'simple-marker',
-          style: 'circle',
+          style: config.id === 'bus_stops_real' ? 'square' : 'circle',
           color: color,
-          size: 8,
+          size: config.id === 'bus_stops_real' ? 10 : 8,
           outline: {
-            color: [255, 255, 255, 0.8],
-            width: 1
+            color: [255, 255, 255, 0.9],
+            width: 2
           }
         }
       };
     } else if (config.geometry_type === 'polygon') {
+      // Enhanced polygon symbols with better visibility
       return {
         type: 'simple',
         symbol: {
           type: 'simple-fill',
-          color: [...color, 0.3],
+          color: [...color, 0.6], // Increased opacity for better visibility
           outline: {
             color: color,
-            width: 2
+            width: config.id === 'mosques_real' ? 3 : 2 // Thicker outline for mosques
           }
         }
       };
@@ -305,7 +308,7 @@ export class AbuDhabiRealDataService {
         symbol: {
           type: 'simple-line',
           color: color,
-          width: 2,
+          width: 3,
           style: 'solid'
         }
       };
