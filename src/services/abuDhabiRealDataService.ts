@@ -32,6 +32,7 @@ export class AbuDhabiRealDataService {
     }
 
     console.log('📊 Loading real Abu Dhabi datasets...');
+    console.log('🗺️ Map view available:', !!this.view);
 
     const datasets: AbuDhabiDataConfig[] = [
       {
@@ -104,13 +105,17 @@ export class AbuDhabiRealDataService {
 
     for (const dataset of datasets) {
       try {
+        console.log(`🔄 Loading dataset: ${dataset.id}`);
         await this.loadDataset(dataset);
+        console.log(`✅ Completed loading: ${dataset.id}`);
       } catch (error) {
         console.error(`❌ Failed to load dataset ${dataset.id}:`, error);
       }
     }
 
     console.log('✅ Real Abu Dhabi datasets loaded');
+    console.log('📊 Total loaded layers:', this.loadedLayers.size);
+    console.log('📋 Layer IDs:', Array.from(this.loadedLayers.keys()));
   }
 
   private async loadDataset(config: AbuDhabiDataConfig) {
@@ -164,10 +169,12 @@ export class AbuDhabiRealDataService {
       });
 
       // Add to map
+      console.log(`🗺️ Adding layer ${config.id} to map...`);
       this.view.map.add(featureLayer);
       this.loadedLayers.set(config.id, featureLayer);
 
       console.log(`✅ Added layer: ${config.title}`);
+      console.log(`📊 Layer ${config.id} now in loadedLayers:`, this.loadedLayers.has(config.id));
 
     } catch (error) {
       console.error(`❌ Error loading dataset ${config.id}:`, error);
