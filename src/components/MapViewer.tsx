@@ -72,13 +72,38 @@ const MapViewer = () => {
         return;
       }
       
+      // Check if this was a real dataset query that should not fall back to backend
+      const isRealDatasetQuery = query.toLowerCase().includes('bus stop') || 
+                                query.toLowerCase().includes('mosque') || 
+                                query.toLowerCase().includes('park') || 
+                                query.toLowerCase().includes('parking') || 
+                                query.toLowerCase().includes('building') || 
+                                query.toLowerCase().includes('road');
+      
+      if (isRealDatasetQuery) {
+        console.log('🏙️ Real dataset query with no results - not calling backend API');
+        return;
+      }
+      
       console.log('🔄 NLP query returned no results, trying backend API...');
-      // Fallback to original query system
+      // Fallback to original query system for mock datasets only
       await executeQuery(query, dataset);
     } catch (error) {
       console.error('❌ Error executing query:', error);
-      // Try backend as fallback
-      await executeQuery(query, dataset);
+      
+      // Only try backend fallback for non-real dataset queries
+      const isRealDatasetQuery = query.toLowerCase().includes('bus stop') || 
+                                query.toLowerCase().includes('mosque') || 
+                                query.toLowerCase().includes('park') || 
+                                query.toLowerCase().includes('parking') || 
+                                query.toLowerCase().includes('building') || 
+                                query.toLowerCase().includes('road');
+      
+      if (!isRealDatasetQuery) {
+        await executeQuery(query, dataset);
+      } else {
+        console.log('🏙️ Real dataset query failed - not calling backend API');
+      }
     }
   };
 
