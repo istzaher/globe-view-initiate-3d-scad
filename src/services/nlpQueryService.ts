@@ -55,10 +55,11 @@ export class NLPQueryService {
       }
     },
     {
-      pattern: /\b(buildings?|structures?|architecture|construction)\b/i,
-      entities: ['buildings'],
+      pattern: /\b(buildings?|structures?|architecture|construction|schools?)\b/i,
+      entities: ['buildings', 'schools'],
       layerMapping: {
-        'buildings': 'buildings_real'
+        'buildings': 'buildings_real',
+        'schools': 'buildings_real'
       }
     },
     {
@@ -68,36 +69,20 @@ export class NLPQueryService {
         'roads': 'roads_real'
       }
     },
-    // Mock datasets
+    // GDB datasets for education/healthcare (keep for geodatabase queries)
     {
-      pattern: /\b(schools?|education|educational)\b/i,
-      entities: ['schools', 'education'],
+      pattern: /\b(education|educational|gdb.*education)\b/i,
+      entities: ['education'],
       layerMapping: {
-        'schools': 'abu_dhabi_schools',
         'education': 'gdb_education_facilities'
       }
     },
     {
-      pattern: /\b(hospital|hospitals|medical|healthcare|health)\b/i,
-      entities: ['hospitals', 'medical', 'healthcare'],
+      pattern: /\b(hospital|hospitals|medical|healthcare|health|gdb.*health)\b/i,
+      entities: ['medical', 'healthcare'],
       layerMapping: {
-        'hospitals': 'abu_dhabi_hospitals',
         'medical': 'gdb_healthcare_facilities',
         'healthcare': 'gdb_healthcare_facilities'
-      }
-    },
-    {
-      pattern: /\b(universit|college|higher education)\b/i,
-      entities: ['universities'],
-      layerMapping: {
-        'universities': 'abu_dhabi_universities'
-      }
-    },
-    {
-      pattern: /\b(police|law enforcement|security)\b/i,
-      entities: ['police'],
-      layerMapping: {
-        'police': 'abu_dhabi_police_stations'
       }
     },
     {
