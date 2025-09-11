@@ -291,7 +291,9 @@ export class NLPQueryService {
           this.abuDhabiRealDataService = new AbuDhabiRealDataService();
           if (this.view) {
             this.abuDhabiRealDataService.setView(this.view);
+            console.log('⏳ Loading real datasets...');
             await this.abuDhabiRealDataService.loadRealDatasets();
+            console.log('✅ Real datasets loaded successfully');
           }
         }
         
