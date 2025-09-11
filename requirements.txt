@@ -1,0 +1,26 @@
+# FastAPI for the web server
+fastapi>=0.68.0
+
+# Uvicorn to run the FastAPI server
+uvicorn[standard]>=0.15.0
+
+# Requests to make HTTP requests (used by the geocoder)
+requests>=2.25.1
+
+# Pydantic for data validation and models
+pydantic>=1.8.0
+
+# To load environment variables (if any)
+python-dotenv>=0.19.0
+
+# NumPy (pin to 1.x for spaCy compatibility)
+numpy>=1.21.0,<2.0.0
+
+# spaCy for advanced natural language processing
+spacy>=3.4.0,<4.0.0
+
+# Additional spaCy models and utilities (for transformers-based models)
+spacy-transformers>=1.1.0
+
+# Additional dependencies for proper functionality
+typing-extensions>=4.0.0 

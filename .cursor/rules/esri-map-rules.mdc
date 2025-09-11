@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+all the fixes should be tested and represent the results of the coordiantoins in the map using the esri javascript.
