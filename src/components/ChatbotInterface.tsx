@@ -73,9 +73,11 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
     if (visibleLayers.length === 0) {
       // Default suggestions when no layers are visible
       suggestions.push(
-        { question: "Show education facilities from geodatabase", type: "spatial", confidence: 0.9 },
-        { question: "Find healthcare facilities in GDB data", type: "spatial", confidence: 0.9 },
-        { question: "Display infrastructure from geodatabase", type: "spatial", confidence: 0.9 }
+        { question: "Show all bus stops in Abu Dhabi", type: "search", confidence: 0.9 },
+        { question: "Find mosques near city center", type: "spatial", confidence: 0.9 },
+        { question: "Display parks and green spaces", type: "search", confidence: 0.8 },
+        { question: "Show parking areas", type: "search", confidence: 0.7 },
+        { question: "Find healthcare facilities in GDB data", type: "spatial", confidence: 0.8 }
       );
     } else {
       // Generate suggestions based on visible layers

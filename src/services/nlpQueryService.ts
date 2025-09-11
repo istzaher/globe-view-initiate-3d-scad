@@ -22,6 +22,53 @@ export class NLPQueryService {
   private view: any = null;
 
   private queryPatterns: QueryPattern[] = [
+    // Real Abu Dhabi datasets
+    {
+      pattern: /\b(bus stop|bus station|public transport|transit|ITC)\b/i,
+      entities: ['bus_stops', 'transit'],
+      layerMapping: {
+        'bus_stops': 'bus_stops_real',
+        'transit': 'bus_stops_real'
+      }
+    },
+    {
+      pattern: /\b(mosque|masjid|place of worship|prayer|islamic|religious)\b/i,
+      entities: ['mosques', 'religious'],
+      layerMapping: {
+        'mosques': 'mosques_real',
+        'religious': 'mosques_real'
+      }
+    },
+    {
+      pattern: /\b(park|parks|green space|recreation|garden)\b/i,
+      entities: ['parks', 'recreation'],
+      layerMapping: {
+        'parks': 'parks_real',
+        'recreation': 'parks_real'
+      }
+    },
+    {
+      pattern: /\b(parking|car park|garage|vehicle)\b/i,
+      entities: ['parking'],
+      layerMapping: {
+        'parking': 'parking_real'
+      }
+    },
+    {
+      pattern: /\b(building|structure|architecture|construction)\b/i,
+      entities: ['buildings'],
+      layerMapping: {
+        'buildings': 'buildings_real'
+      }
+    },
+    {
+      pattern: /\b(road|street|highway|avenue|boulevard)\b/i,
+      entities: ['roads'],
+      layerMapping: {
+        'roads': 'roads_real'
+      }
+    },
+    // Mock datasets
     {
       pattern: /\b(schools?|education|educational)\b/i,
       entities: ['schools', 'education'],
