@@ -18,6 +18,9 @@ export class AbuDhabiRealDataService {
 
   constructor() {
     console.log('🏙️ AbuDhabiRealDataService initialized');
+    
+    // Expose displayLLMResults globally for ChatbotInterface
+    (window as any).displayLLMResults = this.displayLLMResults.bind(this);
   }
 
   setView(view: any) {
@@ -510,7 +513,7 @@ export class AbuDhabiRealDataService {
         isAnalyticalQuery = true;
       }
       
-      // Debug: Check available fields first
+      // Debug: Check available fields first and fix field names
       if (isAnalyticalQuery) {
         console.log(`🔍 DEBUGGING FIELDS: Checking available fields in layer...`);
         const sampleQuery = await layer.queryFeatures({
@@ -528,13 +531,33 @@ export class AbuDhabiRealDataService {
             key.toLowerCase().includes('level') || key.toLowerCase().includes('floor') || key.toLowerCase().includes('building')
           ));
           
-          // Check if level info might be in other fields
-          const typeField = sampleFeature.attributes.Type;
-          const categoryField = sampleFeature.attributes.Category;
-          const descriptionField = sampleFeature.attributes.Description;
-          console.log(`🔍 TYPE FIELD:`, typeField);
-          console.log(`🔍 CATEGORY FIELD:`, categoryField);
-          console.log(`🔍 DESCRIPTION FIELD:`, descriptionField);
+          // Look for the building:levels field specifically
+          const buildingLevelsField = Object.keys(sampleFeature.attributes).find(key => 
+            key.includes('building') && key.includes('level')
+          );
+          console.log(`🏗️ BUILDING LEVELS FIELD FOUND:`, buildingLevelsField);
+          if (buildingLevelsField) {
+            console.log(`🏗️ BUILDING LEVELS VALUE:`, sampleFeature.attributes[buildingLevelsField]);
+            console.log(`🏗️ EXACT FIELD NAME TO USE IN SQL:`, buildingLevelsField);
+            // Replace the placeholder with the actual field name
+            console.log(`🔄 BEFORE REPLACEMENT: "${whereClause}"`);
+            whereClause = whereClause.replace(/BUILDING_LEVELS_FIELD_PLACEHOLDER/g, buildingLevelsField);
+            console.log(`🔄 AFTER REPLACEMENT: "${whereClause}"`);
+          } else {
+            console.log(`🏗️ NO BUILDING LEVELS FIELD FOUND - CHECKING ALL FIELD NAMES:`);
+            Object.keys(sampleFeature.attributes).forEach(key => {
+              console.log(`  - ${key}: ${sampleFeature.attributes[key]}`);
+            });
+            // Fallback: try common alternative field names
+            const alternativeFields = ['building_levels', 'buildinglevels', 'levels', 'LEVELS'];
+            for (const altField of alternativeFields) {
+              if (Object.keys(sampleFeature.attributes).includes(altField)) {
+                console.log(`🔄 USING ALTERNATIVE FIELD: ${altField}`);
+                whereClause = whereClause.replace(/BUILDING_LEVELS_FIELD_PLACEHOLDER/g, altField);
+                break;
+              }
+            }
+          }
         }
       }
 
@@ -597,8 +620,7 @@ export class AbuDhabiRealDataService {
           queryType: queryType,
           layerType: layerId.replace('_real', ''),
           attributeAnalysis: attributeAnalysis,
-          hasLevelData: false, // This dataset doesn't contain building level information
-          levelDataExplanation: isAnalyticalQuery ? "Building level data is not available in this dataset. Available fields include: Name, Type, Category, Description." : undefined
+          hasLevelData: true, // This dataset DOES contain building level information in "building:levels" field
         };
         
         console.log(`📊 ADDED ENHANCED STATISTICS TO QUERY RESULT FOR ${layerId}:`, queryResult.statistics);
@@ -634,16 +656,13 @@ export class AbuDhabiRealDataService {
   private parseAnalyticalQuery(whereClause: string): string {
     console.log(`🔍 PARSING ANALYTICAL QUERY: "${whereClause}"`);
     
-    // Check if this is a level-related query but level data doesn't exist
+    // Check if this is a level-related query - building:levels field DOES exist in GeoJSON
     const isLevelQuery = whereClause.toLowerCase().includes('level') || 
                         whereClause.toLowerCase().includes('floor') || 
                         whereClause.toLowerCase().includes('story');
     
     if (isLevelQuery) {
-      console.log(`⚠️ LEVEL QUERY DETECTED BUT NO LEVEL DATA AVAILABLE`);
-      console.log(`⚠️ Available fields: OBJECTID, Name, Type, Category, Description`);
-      console.log(`⚠️ Returning impossible condition to indicate no level data`);
-      return "1=0"; // This will return 0 results with a clear explanation
+      console.log(`🏗️ LEVEL QUERY DETECTED - building:levels field available in dataset`);
     }
     
     // Parse building level queries like "more than 16 levels"
@@ -674,18 +693,22 @@ export class AbuDhabiRealDataService {
         const levelValue = match[1];
         console.log(`✅ PATTERN MATCHED: ${operator} ${levelValue} levels`);
         
-        // Convert to ArcGIS field query - use CAST for numeric comparison
-        // The field name is "building:levels" and values are strings like "6"
-        const fieldExpression = `CAST("building:levels" AS INTEGER)`;
+        // Convert to ArcGIS field query for "building:levels" field
+        // Include null check and proper casting for numeric comparison
+        console.log(`🏗️ Building SQL query for building:levels ${operator} ${levelValue}`);
+        
+        // We need to use the dynamic field name detection from queryLayer
+        // This will be replaced by the actual field name found in the layer
+        const fieldName = 'BUILDING_LEVELS_FIELD_PLACEHOLDER';
         
         if (operator === '>=' && levelValue) {
-          return `${fieldExpression} >= ${levelValue}`;
+          return `${fieldName} IS NOT NULL AND CAST(${fieldName} AS INTEGER) >= ${levelValue}`;
         } else if (operator === '>' && levelValue) {
-          return `${fieldExpression} > ${levelValue}`;
+          return `${fieldName} IS NOT NULL AND CAST(${fieldName} AS INTEGER) > ${levelValue}`;
         } else if (operator === '<' && levelValue) {
-          return `${fieldExpression} < ${levelValue}`;
+          return `${fieldName} IS NOT NULL AND CAST(${fieldName} AS INTEGER) < ${levelValue}`;
         } else if (operator === '=' && levelValue) {
-          return `${fieldExpression} = ${levelValue}`;
+          return `${fieldName} = '${levelValue}'`;
         }
       }
     }
@@ -935,6 +958,209 @@ export class AbuDhabiRealDataService {
     if (levels <= 20) return '11-20 levels';
     if (levels <= 30) return '21-30 levels';
     return '30+ levels';
+  }
+
+  /**
+   * Display LLM analysis results on the map
+   */
+  async displayLLMResults(mapFeatures: any) {
+    if (!this.view) {
+      console.warn('⚠️ Map view not available for displaying LLM results');
+      return;
+    }
+
+    try {
+      console.log('🎯 Displaying LLM-filtered results on map');
+      
+      // Clear ALL existing layers to show only LLM results
+      this.hideAllDatasets();
+      this.clearLLMLayers();
+      
+      // Load each dataset from LLM results
+      for (const [datasetName, featureCollection] of Object.entries(mapFeatures)) {
+        console.log(`🔍 Processing dataset: ${datasetName}`, featureCollection);
+        
+        if (featureCollection && typeof featureCollection === 'object') {
+          const dataset = featureCollection as any;
+          
+          if (dataset.features && dataset.features.length > 0) {
+            console.log(`📊 Dataset ${datasetName} has ${dataset.features.length} features`);
+            console.log(`🎯 First feature geometry type:`, dataset.features[0]?.geometry?.type);
+            await this.displayLLMDataset(datasetName, dataset);
+          } else {
+            console.warn(`⚠️ Dataset ${datasetName} has no features`);
+          }
+        }
+      }
+      
+      console.log('✅ LLM results displayed on map successfully');
+      
+    } catch (error) {
+      console.error('❌ Error displaying LLM results on map:', error);
+    }
+  }
+
+  /**
+   * Display a specific LLM dataset on the map
+   */
+  private async displayLLMDataset(datasetName: string, featureCollection: any) {
+    try {
+      const [FeatureLayer] = await loadModules(['esri/layers/FeatureLayer']);
+      
+      // Find the appropriate dataset config or create a default one
+      let datasetConfig = this.getDatasetConfigs().find(d => 
+        d.id.includes(datasetName.replace('_real', '')) || 
+        d.title.toLowerCase().includes(datasetName.toLowerCase())
+      );
+      
+      // Create default config if not found
+      if (!datasetConfig) {
+        // Determine geometry type based on actual features
+        let geometryType = 'point'; // default
+        if (featureCollection.features && featureCollection.features.length > 0) {
+          const firstFeature = featureCollection.features[0];
+          if (firstFeature.geometry?.type) {
+            const geoType = firstFeature.geometry.type.toLowerCase();
+            if (geoType === 'polygon' || geoType === 'multipolygon') {
+              geometryType = 'polygon';
+            } else if (geoType === 'linestring' || geoType === 'multilinestring') {
+              geometryType = 'polyline';
+            } else {
+              geometryType = 'point';
+            }
+          }
+        }
+        
+        datasetConfig = {
+          id: `${datasetName}_llm`,
+          title: `${datasetName.replace('_', ' ').toUpperCase()}`,
+          description: `Results from LLM analysis for ${datasetName}`,
+          file: '',
+          geometry_type: geometryType,
+          category: 'LLM Results',
+          color: datasetName.includes('buildings') ? '#FF6B35' : 
+                 datasetName.includes('bus') ? '#004E98' :
+                 datasetName.includes('mosque') ? '#009639' :
+                 datasetName.includes('park') ? '#90EE90' :
+                 datasetName.includes('parking') ? '#7209B7' :
+                 datasetName.includes('road') ? '#808080' : '#FF6B35',
+          icon: '📍',
+          visible: true
+        };
+        
+        console.log(`🔧 Created default config for ${datasetName}:`, datasetConfig);
+      }
+
+      // Prepare features with proper ArcGIS geometry format
+      const features = featureCollection.features.map((feature: any, index: number) => {
+        // Convert GeoJSON geometry to ArcGIS geometry format
+        let geometry = null;
+        if (feature.geometry && feature.geometry.coordinates) {
+          const geojsonGeometry = feature.geometry;
+          
+          // Convert based on geometry type
+          switch (geojsonGeometry.type.toLowerCase()) {
+            case 'point':
+              geometry = {
+                type: 'point',
+                longitude: geojsonGeometry.coordinates[0],
+                latitude: geojsonGeometry.coordinates[1],
+                spatialReference: { wkid: 4326 }
+              };
+              break;
+            case 'polygon':
+              geometry = {
+                type: 'polygon',
+                rings: geojsonGeometry.coordinates,
+                spatialReference: { wkid: 4326 }
+              };
+              break;
+            case 'multipolygon':
+              // Flatten multipolygon to polygon for ArcGIS
+              const allRings = geojsonGeometry.coordinates.flat();
+              geometry = {
+                type: 'polygon',
+                rings: allRings,
+                spatialReference: { wkid: 4326 }
+              };
+              break;
+            case 'linestring':
+              geometry = {
+                type: 'polyline',
+                paths: [geojsonGeometry.coordinates],
+                spatialReference: { wkid: 4326 }
+              };
+              break;
+            case 'multilinestring':
+              geometry = {
+                type: 'polyline',
+                paths: geojsonGeometry.coordinates,
+                spatialReference: { wkid: 4326 }
+              };
+              break;
+            default:
+              console.warn(`⚠️ Unsupported geometry type: ${geojsonGeometry.type}`);
+          }
+        }
+        
+        return {
+          geometry: geometry,
+          attributes: {
+            OBJECTID: index + 1,
+            Name: feature.properties?.Name || feature.properties?.name || `Feature ${index + 1}`,
+            Type: feature.properties?.Type || feature.properties?.amenity || 'Unknown',
+            Category: feature.properties?.Category || datasetName,
+            Description: feature.properties?.Description || feature.properties?.description || '',
+            ...feature.properties
+          }
+        };
+      }).filter(feature => feature.geometry !== null); // Remove features with invalid geometry
+
+      console.log(`📊 Processing ${datasetName}: ${features.length} valid features out of ${featureCollection.features.length} total`);
+      if (features.length > 0) {
+        console.log(`🔍 Sample feature geometry:`, features[0].geometry);
+        console.log(`🎯 Geometry type: ${datasetConfig.geometry_type}`);
+      }
+
+      // Create feature layer from GeoJSON
+      const layer = new FeatureLayer({
+        title: `${datasetConfig.title} (Query Results)`,
+        source: features,
+        geometryType: datasetConfig.geometry_type as any,
+        spatialReference: { wkid: 4326 }, // WGS84
+        renderer: this.createRenderer(datasetConfig),
+        popupTemplate: this.createPopupTemplate(datasetConfig),
+        objectIdField: 'OBJECTID',
+        fields: [
+          { name: 'OBJECTID', type: 'oid' },
+          { name: 'Name', type: 'string' },
+          { name: 'Type', type: 'string' },
+          { name: 'Category', type: 'string' },
+          { name: 'Description', type: 'string' }
+        ]
+      });
+
+      // Add to map
+      this.view.map.add(layer);
+      this.loadedLayers.set(`llm_${datasetName}`, layer);
+      
+      console.log(`✅ Added LLM ${datasetName} layer with ${featureCollection.features.length} features`);
+      
+    } catch (error) {
+      console.error(`❌ Error displaying LLM ${datasetName}:`, error);
+    }
+  }
+
+  /**
+   * Clear LLM-specific layers
+   */
+  private clearLLMLayers() {
+    for (const [name, layer] of this.loadedLayers) {
+      if (name.startsWith('llm_')) {
+        this.view.map.remove(layer);
+        this.loadedLayers.delete(name);
+      }
+    }
   }
 }
 

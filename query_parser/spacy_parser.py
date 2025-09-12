@@ -366,6 +366,45 @@ class SpacyQueryParser:
         
         return None
 
+    def parse_with_enhanced_tools(self, query_text: str, dataset: str = "ev_charging") -> dict:
+        """
+        Parse query using enhanced GIS tools and router.
+        This integrates the spaCy parser with the new tool-based system.
+        """
+        try:
+            from query_parser.tool_router import get_tool_router
+            router = get_tool_router()
+            
+            # Use the enhanced router for better results
+            result = router.route_query(query_text)
+            
+            # Convert to spaCy-compatible format
+            return {
+                "where_clause": result.metadata.get("where_clause", "1=1") if result.metadata else "1=1",
+                "text": result.text,
+                "geojson": result.geojson,
+                "center": result.center,
+                "statistics": result.statistics,
+                "location_lat": result.center["coordinates"][1] if result.center else None,
+                "location_lon": result.center["coordinates"][0] if result.center else None,
+                "distance_km": result.statistics.get("search_radius_km") if result.statistics else None
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in enhanced parsing: {e}")
+            # Fallback to original spaCy parsing
+            spacy_result = self.parse_query(query_text, dataset)
+            return {
+                "where_clause": spacy_result.where_clause,
+                "text": f"Found infrastructure matching your query criteria.",
+                "geojson": None,
+                "center": None,
+                "statistics": None,
+                "location_lat": spacy_result.location_lat,
+                "location_lon": spacy_result.location_lon,
+                "distance_km": spacy_result.distance_km
+            }
+
     def _extract_entities_spacy(self, doc: Doc, dataset: str) -> Dict[str, List[str]]:
         """Extract domain-specific entities using phrase matching with dynamic mappings support."""
         

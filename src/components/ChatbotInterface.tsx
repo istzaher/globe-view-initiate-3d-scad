@@ -57,6 +57,7 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
   isProcessing = false,
   visibleLayers = []
 }) => {
+  
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isOpen, setIsOpen] = useState(true);
@@ -193,151 +194,65 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
   };
 
   const sendMessage = async (message: string) => {
-    if (!message.trim() || isProcessing) return;
-
-    // Add user message
-    addMessage({
-      type: 'user',
-      content: message,
-      metadata: {
-        queryType: 'user_input'
-      }
-    });
-
-    setIsTyping(true);
-
     try {
-      // Check if this is a spatial query before processing
-      const lowerMessage = message.toLowerCase();
-      const isSpatialQuery = lowerMessage.includes('show') || 
-                            lowerMessage.includes('find') || 
-                            lowerMessage.includes('get') || 
-                            lowerMessage.includes('bus stop') || 
-                            lowerMessage.includes('bus') || 
-                            lowerMessage.includes('mosque') || 
-                            lowerMessage.includes('mosques') || 
-                            lowerMessage.includes('park') || 
-                            lowerMessage.includes('parks') || 
-                            lowerMessage.includes('parking') || 
-                            lowerMessage.includes('building') || 
-                            lowerMessage.includes('buildings') || 
-                            lowerMessage.includes('road') || 
-                            lowerMessage.includes('roads') ||
-                            lowerMessage.includes('list') ||
-                            lowerMessage.includes('display') ||
-                            lowerMessage.includes('all') ||
-                            lowerMessage.includes('near') ||
-                            lowerMessage.includes('levels') ||
-                            lowerMessage.includes('floors') ||
-                            lowerMessage.includes('where') ||
-                            lowerMessage.includes('search') ||
-                            lowerMessage.includes('locate') ||
-                            // Exclude general questions that shouldn't trigger spatial queries
-                            (lowerMessage.includes('what') && !lowerMessage.includes('what other datasets') && !lowerMessage.includes('what datasets') && !lowerMessage.includes('what can you do'));
-      
-      console.log('🔍 SPATIAL QUERY DETECTION:', { message, lowerMessage, isSpatialQuery });
-      
-      let spatialContext: any = null;
-      
-      if (isSpatialQuery) {
-        try {
-          console.log('🔍 SPATIAL QUERY DETECTED - CALLING onQuerySubmit with message:', message);
-          // Note: onQuerySubmit also handles map display, so we'll get the result for statistics
-          const nlpResult = await onQuerySubmit(message);
-          console.log('📋 NLP RESULT RECEIVED:', nlpResult);
-          
-          if (nlpResult && nlpResult.statistics) {
-            console.log('✅ STATISTICS FOUND IN NLP RESULT:', nlpResult.statistics);
-            
-            // Build enhanced spatial context with attribute analysis
-            const attributeAnalysis = nlpResult.statistics.attributeAnalysis;
-            let detailedSummary = `Found ${nlpResult.statistics.matchingFeatures} features out of ${nlpResult.statistics.totalFeatures} total features (${nlpResult.statistics.percentage}%). Dataset: ${nlpResult.statistics.layerType}.`;
-            
-            // Add attribute analysis summary if available
-            if (attributeAnalysis && attributeAnalysis.summary) {
-              detailedSummary += ` ${attributeAnalysis.summary}`;
-            }
-            
-            spatialContext = {
-              queryResults: {
-                features: nlpResult.features?.length || 0,
-                totalFeatures: nlpResult.statistics.totalFeatures,
-                matchingFeatures: nlpResult.statistics.matchingFeatures,
-                percentage: nlpResult.statistics.percentage,
-                layerType: nlpResult.statistics.layerType,
-                queryType: nlpResult.statistics.queryType,
-                attributeAnalysis: attributeAnalysis
-              },
-              spatialSummary: detailedSummary,
-              attributeBreakdown: attributeAnalysis
-            };
-            console.log('📊 SPATIAL CONTEXT FOR LLM:', spatialContext);
-            console.log('🚀 SENDING SPATIAL CONTEXT TO BACKEND...');
-          } else {
-            console.warn('❌ NO STATISTICS IN NLP RESULT:', nlpResult);
-          }
-        } catch (error) {
-          console.log('ℹ️ No spatial results, proceeding with normal chat query');
-          console.error('❌ Error in onQuerySubmit:', error);
-        }
-      } else {
-        console.log('💬 NON-SPATIAL QUERY DETECTED - SKIPPING MAP PROCESSING:', message);
-      }
+      if (!message.trim() || isProcessing) return;
 
-      // Prepare the request body - match backend ChatbotRequest structure
-      const requestBody = {
-        message,
-        sessionId,
-        currentDataset,
-        spatialContext: spatialContext
-      };
-
-      console.log('📤 SENDING TO BACKEND:', requestBody);
-
-      const response = await fetch('/api/chatbot/query', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
+      addMessage({
+        type: 'user',
+        content: message,
+        metadata: { queryType: 'user_input' }
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to get chatbot response');
-      }
+      setIsTyping(true);
 
-      const chatbotResponse: ChatbotResponse = await response.json();
+      const requestBody = {
+        message,
+        currentDataset: currentDataset || 'buildings_real',
+        sessionId: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      };
 
-      // Add assistant response
+      const response = await fetch('/api/llm-query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+
+      const chatbotResponse = await response.json();
+      
       addMessage({
         type: 'assistant',
         content: chatbotResponse.message,
-        metadata: {
-          queryType: chatbotResponse.metadata?.queryType,
-          dataset: chatbotResponse.metadata?.dataset,
-          spatialOperation: chatbotResponse.metadata?.spatialOperation
-        }
+        metadata: { queryType: chatbotResponse.type || 'general' }
       });
 
-      // Update follow-up suggestions
+      // Display LLM results directly on map (skip old ArcGIS query system)
+      if (chatbotResponse.context?.mapFeatures) {
+        try {
+          console.log('🎯 Displaying LLM-filtered results directly on map...');
+          const mapData = chatbotResponse.context.mapFeatures;
+          
+          console.log('📊 LLM Map Data to Display:', mapData);
+          
+          // ONLY use LLM results - skip the old onQuerySubmit system
+          if ((window as any).displayLLMResults) {
+            (window as any).displayLLMResults(mapData);
+          }
+        } catch (error) {
+          console.error('❌ Error displaying LLM results on map:', error);
+        }
+      } else {
+        console.warn('⚠️ No map features found in LLM response');
+      }
+
       if (chatbotResponse.followUpSuggestions) {
         setFollowUpSuggestions(chatbotResponse.followUpSuggestions);
       }
 
-      // If it's a spatial query, trigger the map query with intelligent dataset detection
-      if (chatbotResponse.type === 'query' && chatbotResponse.metadata?.queryType === 'spatial') {
-        const detectedDataset = detectDatasetFromMessage(message) || currentDataset || 'education_0';
-        onQuerySubmit(message, detectedDataset);
-      }
-
-    } catch (error) {
-      console.error('Chatbot error:', error);
+    } catch (error: any) {
       addMessage({
         type: 'assistant',
-        content: "I'm sorry, I encountered an error processing your request. Please try again.",
-        metadata: {
-          queryType: 'error'
-        }
+        content: "I'm sorry, I encountered an error. Please try again.",
+        metadata: { queryType: 'error' }
       });
     } finally {
       setIsTyping(false);
@@ -417,7 +332,10 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
                   ? 'bg-gray-800 text-white border border-gray-600'
                   : 'bg-purple-700/90 text-white backdrop-blur-sm border border-purple-500/30'
               }`}>
-                <p className="text-sm leading-relaxed font-medium">{message.content}</p>
+                <div 
+                  className="text-sm leading-relaxed font-medium prose prose-sm prose-invert max-w-none [&>h3]:text-white [&>h3]:text-base [&>h3]:font-semibold [&>h3]:mt-3 [&>h3]:mb-2 [&>p]:text-white [&>p]:mb-2 [&>ul]:text-white [&>li]:text-white [&>li]:mb-1 [&>strong]:text-white [&>strong]:font-semibold"
+                  dangerouslySetInnerHTML={{ __html: message.content }}
+                />
                 {message.metadata?.queryType && message.metadata.queryType !== 'greeting' && (
                   <div className="mt-2 text-xs opacity-80 font-medium">
                     {message.metadata.queryType === 'spatial' && '🗺️ Spatial Query'}
@@ -475,6 +393,7 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
           </div>
         </div>
       )}
+
 
       {/* Input Area */}
       <div className="p-4 border-t border-purple-700/50 bg-black/40 backdrop-blur-sm">

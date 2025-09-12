@@ -60,8 +60,41 @@ const MapViewer = () => {
   // Handle natural language query
   const handleNLQuery = async (query: string, dataset?: string) => {
     console.log('🔍 Handling NL query:', { query, dataset });
+    console.log('🚀 ENHANCED HANDLER: Using new tool-based system - TEST IDENTIFIER 12345 RECEIVED');
+    
     try {
-      // Try NLP query service first for feature layers
+      // Try enhanced query service first - implements fastest patterns from ArcGIS + AI document
+      const { enhancedQueryService } = await import('../services/enhancedQueryService');
+      const enhancedResult = await enhancedQueryService.processQueryWithFallback(query);
+      
+      // Check if enhanced system says to use existing NLP service for Abu Dhabi datasets
+      if (enhancedResult.success && enhancedResult.metadata?.use_existing_nlp_service) {
+        console.log('🏙️ Enhanced system routing to existing NLP service for Abu Dhabi datasets');
+        // Fall through to the existing NLP service below
+      } else if (enhancedResult.success && enhancedResult.geojson?.features?.length > 0) {
+        console.log('✅ Enhanced query successful:', enhancedResult);
+        setFeatureResults(enhancedResult.geojson.features);
+        
+        // Center map on results if center point is available
+        if (enhancedResult.center && mapView) {
+          const [longitude, latitude] = enhancedResult.center.coordinates;
+          mapView.goTo({
+            center: [longitude, latitude],
+            zoom: 12
+          }).catch((error: any) => console.warn('Map centering failed:', error));
+        }
+        
+        // Return enhanced result with statistics for chat response
+        return {
+          features: enhancedResult.geojson.features,
+          statistics: enhancedResult.statistics,
+          text: enhancedResult.text,
+          metadata: enhancedResult.metadata
+        };
+      }
+      
+      // If enhanced system didn't work, try original NLP service for Abu Dhabi datasets
+      console.log('🔄 Enhanced query returned no results, trying NLP service...');
       const nlpResult = await nlpQueryService.processQuery(query);
       
       if (nlpResult && nlpResult.features && nlpResult.features.length > 0) {
