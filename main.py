@@ -3,7 +3,7 @@
 Simplified Globe View 3D Backend Server
 Fast startup with basic dataset support and ArcGIS authentication
 """
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -17,13 +17,23 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
 import openai
+import tempfile
+import shutil
 
 # Load environment variables
 load_dotenv()
 
-# Configure logging
+# Configure logging first
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Import document processor (with error handling)
+try:
+    from documentProcessor import document_processor
+    logger.info("✅ Document processor loaded successfully")
+except ImportError as e:
+    logger.warning(f"⚠️ Document processor not available: {e}")
+    document_processor = None
 
 app = FastAPI()
 
@@ -2121,6 +2131,265 @@ def generate_mock_geodatabase_features(layer_name: str, where_clause: str) -> Li
         })
     
     return features
+
+# Document Processing Endpoints
+# ============================
+
+class DocumentUploadResponse(BaseModel):
+    success: bool
+    message: str
+    filename: Optional[str] = None
+    file_id: Optional[str] = None
+    text: Optional[str] = None
+    metadata: Optional[Dict] = None
+    error: Optional[str] = None
+
+class DocumentQueryRequest(BaseModel):
+    query: str
+    file_ids: Optional[List[str]] = None  # Process specific files
+    use_all_documents: bool = False  # Process all uploaded documents
+
+class DocumentQueryResponse(BaseModel):
+    success: bool
+    response: Optional[str] = None
+    sources: Optional[List[str]] = None
+    error: Optional[str] = None
+
+# Temporary storage for uploaded documents (in production, use a database)
+uploaded_documents = {}
+
+@app.post("/api/upload-document", response_model=DocumentUploadResponse)
+async def upload_document(file: UploadFile = File(...)):
+    """
+    Upload and process a document for text extraction.
+    Supports PDF, Word, Excel, CSV, and image files.
+    """
+    try:
+        if not document_processor:
+            return DocumentUploadResponse(
+                success=False,
+                error="Document processor not available. Please check server configuration."
+            )
+        
+        # Validate file size (10MB limit)
+        max_size = 10 * 1024 * 1024  # 10MB
+        file_content = await file.read()
+        if len(file_content) > max_size:
+            return DocumentUploadResponse(
+                success=False,
+                error="File too large. Maximum size is 10MB."
+            )
+        
+        # Create temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as temp_file:
+            temp_file.write(file_content)
+            temp_file_path = temp_file.name
+        
+        try:
+            # Process the document
+            result = document_processor.process_file(temp_file_path, file.filename)
+            
+            if result['success']:
+                # Generate unique file ID
+                import uuid
+                file_id = str(uuid.uuid4())
+                
+                # Store document data
+                uploaded_documents[file_id] = {
+                    'filename': file.filename,
+                    'text': result.get('text', ''),
+                    'metadata': {
+                        'mime_type': result.get('mime_type'),
+                        'file_size': result.get('file_size'),
+                        'upload_time': time.time(),
+                        **{k: v for k, v in result.items() if k not in ['text', 'success']}
+                    }
+                }
+                
+                return DocumentUploadResponse(
+                    success=True,
+                    message="Document processed successfully",
+                    filename=file.filename,
+                    file_id=file_id,
+                    text=result.get('text', '')[:500] + "..." if len(result.get('text', '')) > 500 else result.get('text', ''),
+                    metadata=uploaded_documents[file_id]['metadata']
+                )
+            else:
+                return DocumentUploadResponse(
+                    success=False,
+                    error=result.get('error', 'Unknown processing error'),
+                    filename=file.filename
+                )
+                
+        finally:
+            # Clean up temporary file
+            try:
+                os.unlink(temp_file_path)
+            except:
+                pass
+        
+    except Exception as e:
+        logger.error(f"❌ Document upload error: {e}")
+        return DocumentUploadResponse(
+            success=False,
+            error=str(e),
+            filename=getattr(file, 'filename', 'unknown')
+        )
+
+@app.post("/api/query-documents", response_model=DocumentQueryResponse)
+async def query_documents(request: DocumentQueryRequest):
+    """
+    Query uploaded documents using AI.
+    """
+    try:
+        if not request.query.strip():
+            return DocumentQueryResponse(
+                success=False,
+                error="Query cannot be empty"
+            )
+        
+        # Gather document texts
+        document_texts = []
+        source_files = []
+        
+        if request.use_all_documents:
+            # Use all uploaded documents
+            for file_id, doc_data in uploaded_documents.items():
+                document_texts.append(f"=== {doc_data['filename']} ===\n{doc_data['text']}")
+                source_files.append(doc_data['filename'])
+        elif request.file_ids:
+            # Use specific documents
+            for file_id in request.file_ids:
+                if file_id in uploaded_documents:
+                    doc_data = uploaded_documents[file_id]
+                    document_texts.append(f"=== {doc_data['filename']} ===\n{doc_data['text']}")
+                    source_files.append(doc_data['filename'])
+        else:
+            return DocumentQueryResponse(
+                success=False,
+                error="No documents specified for querying"
+            )
+        
+        if not document_texts:
+            return DocumentQueryResponse(
+                success=False,
+                error="No valid documents found"
+            )
+        
+        # Combine all document texts
+        combined_text = "\n\n".join(document_texts)
+        
+        # Query with AI if available
+        client = get_openai_client()
+        if client:
+            try:
+                response = client.chat.completions.create(
+                    model="anthropic/claude-3.5-sonnet",
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "You are an AI assistant that analyzes documents and answers questions based on their content. Provide accurate, helpful responses based only on the information in the provided documents. If you cannot find the answer in the documents, say so clearly."
+                        },
+                        {
+                            "role": "user",
+                            "content": f"Based on the following documents, please answer this question: {request.query}\n\nDocuments:\n{combined_text}"
+                        }
+                    ],
+                    max_tokens=1000,
+                    temperature=0.3
+                )
+                
+                ai_response = response.choices[0].message.content
+                
+                return DocumentQueryResponse(
+                    success=True,
+                    response=ai_response,
+                    sources=source_files
+                )
+                
+            except Exception as ai_error:
+                logger.error(f"❌ AI query error: {ai_error}")
+                # Fallback to simple text search
+                query_lower = request.query.lower()
+                relevant_chunks = []
+                
+                for text in document_texts:
+                    lines = text.split('\n')
+                    for line in lines:
+                        if any(term in line.lower() for term in query_lower.split()):
+                            relevant_chunks.append(line.strip())
+                
+                if relevant_chunks:
+                    fallback_response = f"Found {len(relevant_chunks)} relevant text segments:\n\n" + "\n".join(relevant_chunks[:5])
+                else:
+                    fallback_response = "No relevant information found in the documents for your query."
+                
+                return DocumentQueryResponse(
+                    success=True,
+                    response=fallback_response,
+                    sources=source_files
+                )
+        else:
+            # Simple keyword search fallback
+            query_lower = request.query.lower()
+            relevant_chunks = []
+            
+            for text in document_texts:
+                if any(term in text.lower() for term in query_lower.split()):
+                    # Extract relevant paragraphs
+                    paragraphs = text.split('\n\n')
+                    for para in paragraphs:
+                        if any(term in para.lower() for term in query_lower.split()):
+                            relevant_chunks.append(para.strip())
+            
+            if relevant_chunks:
+                response_text = f"Found {len(relevant_chunks)} relevant sections:\n\n" + "\n\n".join(relevant_chunks[:3])
+            else:
+                response_text = "No relevant information found in the documents for your query."
+            
+            return DocumentQueryResponse(
+                success=True,
+                response=response_text,
+                sources=source_files
+            )
+        
+    except Exception as e:
+        logger.error(f"❌ Document query error: {e}")
+        return DocumentQueryResponse(
+            success=False,
+            error=str(e)
+        )
+
+@app.get("/api/uploaded-documents")
+async def get_uploaded_documents():
+    """Get list of uploaded documents."""
+    documents = []
+    for file_id, doc_data in uploaded_documents.items():
+        documents.append({
+            'file_id': file_id,
+            'filename': doc_data['filename'],
+            'metadata': doc_data['metadata'],
+            'text_preview': doc_data['text'][:200] + "..." if len(doc_data['text']) > 200 else doc_data['text']
+        })
+    
+    return {
+        'success': True,
+        'documents': documents,
+        'count': len(documents)
+    }
+
+@app.delete("/api/documents/{file_id}")
+async def delete_document(file_id: str):
+    """Delete an uploaded document."""
+    if file_id in uploaded_documents:
+        filename = uploaded_documents[file_id]['filename']
+        del uploaded_documents[file_id]
+        return {
+            'success': True,
+            'message': f'Document {filename} deleted successfully'
+        }
+    else:
+        raise HTTPException(status_code=404, detail="Document not found")
 
 # Serve static files
 if static_dir.exists():

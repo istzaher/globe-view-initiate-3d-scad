@@ -192,7 +192,7 @@ const MapViewer = () => {
   });
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-slate-900 flex">
+    <div className="relative w-full h-full overflow-hidden bg-slate-900 flex">
       {/* Loading Screen */}
       {isLoading && <MapLoadingScreen />}
 
