@@ -561,13 +561,44 @@ export class AbuDhabiRealDataService {
         }
       }
 
-      const queryResult = await layer.queryFeatures({
+      // For buildings, optimize query to handle large dataset
+      const queryOptions: any = {
         where: whereClause,
         outFields: ['*'],
         returnGeometry: true
-      });
+      };
+      
+      // For buildings showing "all", ensure no limits and proper handling
+      if (layerId === 'buildings_real' && whereClause === '1=1') {
+        console.log(`🏗️ Querying ALL buildings - optimizing for large dataset`);
+        queryOptions.maxRecordCount = 0; // Remove any limits
+        queryOptions.start = 0; // Start from beginning
+      }
+      
+      const queryResult = await layer.queryFeatures(queryOptions);
 
       console.log(`🔍 Query result for ${layerId}: ${queryResult.features.length} features`);
+      
+      // Special logging for buildings to debug the "show all" issue
+      if (layerId === 'buildings_real') {
+        console.log(`🏗️ BUILDINGS DEBUG:`);
+        console.log(`   📊 Query: "${whereClause}"`);
+        console.log(`   🔢 Features returned: ${queryResult.features.length}`);
+        console.log(`   📐 Query options used:`, queryOptions);
+        
+        // Check if this is showing "all" buildings
+        if (whereClause === '1=1') {
+          console.log(`   🎯 This is a "SHOW ALL BUILDINGS" query`);
+          console.log(`   ⚠️ Expected: 1398 buildings, Got: ${queryResult.features.length}`);
+          
+          if (queryResult.features.length < 1398) {
+            console.warn(`   ❌ MISSING BUILDINGS: Only showing ${queryResult.features.length} out of 1398 expected buildings!`);
+            console.warn(`   🔧 This indicates a query limit or performance issue`);
+          } else {
+            console.log(`   ✅ All buildings are being returned correctly`);
+          }
+        }
+      }
       
       // For ALL real dataset queries, gather statistics for chat response
       if (layerId.endsWith('_real')) {
@@ -971,6 +1002,7 @@ export class AbuDhabiRealDataService {
 
     try {
       console.log('🎯 Displaying LLM-filtered results on map');
+      console.log('📊 LLM Map Data received:', mapFeatures);
       
       // Clear ALL existing layers to show only LLM results
       this.hideAllDatasets();
@@ -986,6 +1018,32 @@ export class AbuDhabiRealDataService {
           if (dataset.features && dataset.features.length > 0) {
             console.log(`📊 Dataset ${datasetName} has ${dataset.features.length} features`);
             console.log(`🎯 First feature geometry type:`, dataset.features[0]?.geometry?.type);
+            
+            // Special handling for buildings to ensure all are displayed
+            if (datasetName.includes('buildings')) {
+              console.log(`🏗️ BUILDINGS SPECIAL HANDLING:`);
+              console.log(`   🔢 LLM returned: ${dataset.features.length} buildings`);
+              console.log(`   📊 Total features claimed: ${dataset.total_features || 'unknown'}`);
+              console.log(`   📊 Filtered features: ${dataset.filtered_features || 'unknown'}`);
+              
+              // If we have fewer than expected and this seems like a "show all" query, use direct layer
+              if (dataset.features.length < 1398 && dataset.features.length < (dataset.total_features || 1398)) {
+                console.warn(`   ⚠️ LLM returned incomplete building set: ${dataset.features.length} < expected 1398`);
+                console.log(`   🔧 Attempting to show all buildings directly from loaded layer...`);
+                
+                // Try to show all buildings from the loaded layer instead
+                const buildingsLayer = this.getLayerById('buildings_real');
+                if (buildingsLayer) {
+                  console.log(`   ✅ Found buildings layer, making it visible to show ALL buildings`);
+                  buildingsLayer.visible = true;
+                  // Don't process the LLM limited dataset, use the full layer instead
+                  continue;
+                } else {
+                  console.warn(`   ❌ Buildings layer not loaded, will display LLM limited results`);
+                }
+              }
+            }
+            
             await this.displayLLMDataset(datasetName, dataset);
           } else {
             console.warn(`⚠️ Dataset ${datasetName} has no features`);
@@ -1122,15 +1180,17 @@ export class AbuDhabiRealDataService {
         console.log(`🎯 Geometry type: ${datasetConfig.geometry_type}`);
       }
 
-      // Create feature layer from GeoJSON
+      // Create feature layer from GeoJSON with optimizations for large datasets
       const layer = new FeatureLayer({
-        title: `${datasetConfig.title} (Query Results)`,
+        title: `${datasetConfig.title} (LLM Results - ${featureCollection.features.length} features)`,
         source: features,
         geometryType: datasetConfig.geometry_type as any,
         spatialReference: { wkid: 4326 }, // WGS84
         renderer: this.createRenderer(datasetConfig),
         popupTemplate: this.createPopupTemplate(datasetConfig),
         objectIdField: 'OBJECTID',
+        // Optimize for large datasets like buildings (1398 features)
+        maxRecordCount: 0, // Remove any limits to show ALL features
         fields: [
           { name: 'OBJECTID', type: 'oid' },
           { name: 'Name', type: 'string' },
@@ -1145,6 +1205,25 @@ export class AbuDhabiRealDataService {
       this.loadedLayers.set(`llm_${datasetName}`, layer);
       
       console.log(`✅ Added LLM ${datasetName} layer with ${featureCollection.features.length} features`);
+      
+      // Special logging for buildings LLM results
+      if (datasetName.includes('buildings')) {
+        console.log(`🏗️ LLM BUILDINGS DISPLAY DEBUG:`);
+        console.log(`   📊 Dataset: ${datasetName}`);
+        console.log(`   🔢 LLM Features: ${featureCollection.features.length}`);
+        console.log(`   🎯 Expected for "all buildings": 1398`);
+        
+        if (featureCollection.features.length < 1398) {
+          console.warn(`   ⚠️ LLM returned fewer buildings than expected!`);
+          console.warn(`   🔧 This suggests the LLM is filtering/limiting the results`);
+          console.log(`   💡 The LLM should return ALL ${featureCollection.total_features || 'available'} buildings for "show all" queries`);
+        }
+        
+        // Log the actual layer added to map
+        console.log(`   🗺️ Layer added to map:`, layer.title);
+        console.log(`   👁️ Layer visible:`, layer.visible);
+        console.log(`   🎨 Renderer:`, layer.renderer ? 'configured' : 'missing');
+      }
       
     } catch (error) {
       console.error(`❌ Error displaying LLM ${datasetName}:`, error);
