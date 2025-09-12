@@ -63,7 +63,7 @@ class DocumentProcessor:
     
     def detect_file_type(self, file_path: str) -> str:
         """
-        Detect file MIME type using python-magic.
+        Detect file MIME type using python-magic with fallback to extension-based detection.
         
         Args:
             file_path: Path to the file
@@ -74,6 +74,24 @@ class DocumentProcessor:
         try:
             mime_type = magic.from_file(file_path, mime=True)
             logger.info(f"🔍 Detected file type: {mime_type} for {file_path}")
+            
+            # Fix common Windows issues with python-magic
+            if mime_type == 'text/plain':
+                # Check file extension for common types that magic misidentifies
+                file_ext = Path(file_path).suffix.lower()
+                if file_ext == '.csv':
+                    mime_type = 'text/csv'
+                elif file_ext == '.txt':
+                    mime_type = 'text/plain'
+                elif file_ext in ['.xlsx', '.xls']:
+                    mime_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' if file_ext == '.xlsx' else 'application/vnd.ms-excel'
+                elif file_ext == '.docx':
+                    mime_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                elif file_ext == '.pdf':
+                    mime_type = 'application/pdf'
+                elif file_ext in ['.png', '.jpg', '.jpeg', '.tiff', '.bmp']:
+                    mime_type = f'image/{file_ext[1:]}'
+            
             return mime_type
         except Exception as e:
             logger.warning(f"⚠️ Magic detection failed: {e}, trying mimetypes")
