@@ -510,6 +510,34 @@ export class AbuDhabiRealDataService {
         isAnalyticalQuery = true;
       }
       
+      // Debug: Check available fields first
+      if (isAnalyticalQuery) {
+        console.log(`🔍 DEBUGGING FIELDS: Checking available fields in layer...`);
+        const sampleQuery = await layer.queryFeatures({
+          where: '1=1',
+          outFields: ['*'],
+          returnGeometry: false,
+          num: 1
+        });
+        
+        if (sampleQuery.features.length > 0) {
+          const sampleFeature = sampleQuery.features[0];
+          console.log(`🔍 SAMPLE FEATURE ATTRIBUTES:`, Object.keys(sampleFeature.attributes));
+          console.log(`🔍 SAMPLE FEATURE VALUES:`, sampleFeature.attributes);
+          console.log(`🔍 LOOKING FOR LEVEL FIELDS:`, Object.keys(sampleFeature.attributes).filter(key => 
+            key.toLowerCase().includes('level') || key.toLowerCase().includes('floor') || key.toLowerCase().includes('building')
+          ));
+          
+          // Check if level info might be in other fields
+          const typeField = sampleFeature.attributes.Type;
+          const categoryField = sampleFeature.attributes.Category;
+          const descriptionField = sampleFeature.attributes.Description;
+          console.log(`🔍 TYPE FIELD:`, typeField);
+          console.log(`🔍 CATEGORY FIELD:`, categoryField);
+          console.log(`🔍 DESCRIPTION FIELD:`, descriptionField);
+        }
+      }
+
       const queryResult = await layer.queryFeatures({
         where: whereClause,
         outFields: ['*'],
@@ -568,7 +596,9 @@ export class AbuDhabiRealDataService {
           percentage: percentage,
           queryType: queryType,
           layerType: layerId.replace('_real', ''),
-          attributeAnalysis: attributeAnalysis
+          attributeAnalysis: attributeAnalysis,
+          hasLevelData: false, // This dataset doesn't contain building level information
+          levelDataExplanation: isAnalyticalQuery ? "Building level data is not available in this dataset. Available fields include: Name, Type, Category, Description." : undefined
         };
         
         console.log(`📊 ADDED ENHANCED STATISTICS TO QUERY RESULT FOR ${layerId}:`, queryResult.statistics);
@@ -603,6 +633,18 @@ export class AbuDhabiRealDataService {
 
   private parseAnalyticalQuery(whereClause: string): string {
     console.log(`🔍 PARSING ANALYTICAL QUERY: "${whereClause}"`);
+    
+    // Check if this is a level-related query but level data doesn't exist
+    const isLevelQuery = whereClause.toLowerCase().includes('level') || 
+                        whereClause.toLowerCase().includes('floor') || 
+                        whereClause.toLowerCase().includes('story');
+    
+    if (isLevelQuery) {
+      console.log(`⚠️ LEVEL QUERY DETECTED BUT NO LEVEL DATA AVAILABLE`);
+      console.log(`⚠️ Available fields: OBJECTID, Name, Type, Category, Description`);
+      console.log(`⚠️ Returning impossible condition to indicate no level data`);
+      return "1=0"; // This will return 0 results with a clear explanation
+    }
     
     // Parse building level queries like "more than 16 levels"
     const levelPatterns = [

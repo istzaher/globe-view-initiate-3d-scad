@@ -1309,7 +1309,9 @@ Enhanced: "Found 1,398 buildings out of 1,398 total features (100.0%). This repr
 - **Height Distribution:** 234 low-rise (1-2 levels), 156 mid-rise (3-10 levels), 45 high-rise (11+ levels)
 - **Notable Buildings:** ADNOC Drilling Head Office, Emirates Palace Hotel, Corniche Mall"
 
-Always use the provided attributeAnalysis data to create detailed, informative responses that help users understand the composition and characteristics of the spatial data."""
+Always use the provided attributeAnalysis data to create detailed, informative responses that help users understand the composition and characteristics of the spatial data.
+
+IMPORTANT: If a "LEVEL DATA LIMITATION" is mentioned in the spatial context, explain clearly that the building level/floor information is not available in this dataset and suggest alternative queries the user can make with available data (such as building types, categories, or names)."""
                     }
                 ]
                 
@@ -1318,11 +1320,16 @@ Always use the provided attributeAnalysis data to create detailed, informative r
                 query_results = request.spatialContext.get('queryResults', {})
                 attribute_breakdown = request.spatialContext.get('attributeBreakdown', {})
                 
+                # Check if this is a level query with missing data
+                level_explanation = ""
+                if query_results.get('levelDataExplanation'):
+                    level_explanation = f"\nLEVEL DATA LIMITATION: {query_results.get('levelDataExplanation')}"
+
                 spatial_message = f"""SPATIAL QUERY RESULTS:
 Query: {message}
 Results: {spatial_summary}
 Details: {query_results.get('features', 0)} features found out of {query_results.get('totalFeatures', 0)} total features ({query_results.get('percentage', '0')}%)
-Dataset: {query_results.get('layerType', 'unknown')} ({query_results.get('queryType', 'general')} query)
+Dataset: {query_results.get('layerType', 'unknown')} ({query_results.get('queryType', 'general')} query){level_explanation}
 
 ATTRIBUTE ANALYSIS:
 {format_attribute_analysis(attribute_breakdown)}"""
