@@ -43,12 +43,14 @@ interface EsriMapToolsProps {
   view?: any;
   onBasemapChange?: (basemap: string) => void;
   currentBasemap?: string;
+  onEnable3D?: () => void;
 }
 
 const EsriMapTools: React.FC<EsriMapToolsProps> = ({ 
   view, 
   onBasemapChange,
-  currentBasemap = 'streets-vector'
+  currentBasemap = 'streets-vector',
+  onEnable3D
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [measurementWidget, setMeasurementWidget] = useState<any>(null);
@@ -797,6 +799,23 @@ const EsriMapTools: React.FC<EsriMapToolsProps> = ({
                     <span className="ml-2 text-xs">{basemap.name}</span>
                   </Button>
                 ))}
+              </div>
+            </div>
+
+            {/* 3D Controls */}
+            <div className="mb-4">
+              <h4 className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">3D Controls</h4>
+              <div className="grid grid-cols-1 gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={onEnable3D}
+                  className="justify-start"
+                  title="Enable 3D rotation for current map type"
+                >
+                  <Move3D className="w-4 h-4" />
+                  <span className="ml-2 text-xs">Enable 3D Rotation</span>
+                </Button>
               </div>
             </div>
 

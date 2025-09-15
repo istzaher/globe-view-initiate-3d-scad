@@ -30,6 +30,7 @@ const MapViewer = () => {
     mapError,
     currentBasemap,
     setCurrentBasemap,
+    enable3DCapabilities,
     viewRef
   } = useMapInitialization();
 
@@ -226,16 +227,55 @@ const MapViewer = () => {
           <>
             <MapContainer ref={mapContainerRef} />
             
-            {/* Esri Map Tools - Bottom Left */}
-            {/* {viewRef.current && (
-              <EsriMapTools 
-                view={viewRef.current}
-                currentBasemap={currentBasemap}
-                onBasemapChange={(basemap) => {
-                  console.log(`🗺️ Basemap changed to: ${basemap}`);
-                }}
-              />
-            )} */}
+            {/* ESRI Basemap Switcher - Pure JavaScript */}
+        {viewRef.current && (
+          <div className="absolute bottom-4 left-4 z-10">
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setCurrentBasemap('streets-vector')}
+                className={`w-16 h-8 text-xs rounded bg-white border border-gray-300 hover:bg-gray-50 ${currentBasemap === 'streets-vector' ? 'border-blue-500 bg-blue-50' : ''}`}
+                title="Streets"
+              >
+                Streets
+              </button>
+              <button
+                onClick={() => setCurrentBasemap('satellite')}
+                className={`w-16 h-8 text-xs rounded bg-white border border-gray-300 hover:bg-gray-50 ${currentBasemap === 'satellite' ? 'border-blue-500 bg-blue-50' : ''}`}
+                title="Satellite"
+              >
+                Satellite
+              </button>
+              <button
+                onClick={() => setCurrentBasemap('terrain')}
+                className={`w-16 h-8 text-xs rounded bg-white border border-gray-300 hover:bg-gray-50 ${currentBasemap === 'terrain' ? 'border-blue-500 bg-blue-50' : ''}`}
+                title="Terrain"
+              >
+                Terrain
+              </button>
+              <button
+                onClick={() => setCurrentBasemap('topo-vector')}
+                className={`w-16 h-8 text-xs rounded bg-white border border-gray-300 hover:bg-gray-50 ${currentBasemap === 'topo-vector' ? 'border-blue-500 bg-blue-50' : ''}`}
+                title="Topo"
+              >
+                Topo
+              </button>
+              <button
+                onClick={() => setCurrentBasemap('dark-gray-vector')}
+                className={`w-16 h-8 text-xs rounded bg-white border border-gray-300 hover:bg-gray-50 ${currentBasemap === 'dark-gray-vector' ? 'border-blue-500 bg-blue-50' : ''}`}
+                title="Dark Gray"
+              >
+                Dark
+              </button>
+              <button
+                onClick={() => setCurrentBasemap('gray-vector')}
+                className={`w-16 h-8 text-xs rounded bg-white border border-gray-300 hover:bg-gray-50 ${currentBasemap === 'gray-vector' ? 'border-blue-500 bg-blue-50' : ''}`}
+                title="Light Gray"
+              >
+                Light
+              </button>
+            </div>
+          </div>
+        )}
             
             {/* Results Panel - overlay on map when there are results */}
             <MapResultsPanel
