@@ -59,7 +59,7 @@ def get_openai_client():
             return None
     return openai_client
 
-# Add CORS middleware - Allow frontend on ports 3000-3010 and legacy 8080
+# Add CORS middleware - Allow frontend on ports 3000-3010 and production domains
 cors_origins = [
     "http://localhost:3000",
     "http://localhost:3001", 
@@ -67,6 +67,8 @@ cors_origins = [
     "http://localhost:3003",
     "http://localhost:8080",  # Legacy support
     "http://localhost:5173",  # Vite default
+    "https://*.vercel.app",  # Vercel deployments
+    "https://globe-esri-scad.vercel.app",  # Your specific Vercel domain
     "*"  # Allow all for development
 ]
 app.add_middleware(
