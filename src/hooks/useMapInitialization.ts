@@ -40,8 +40,8 @@ export function useMapInitialization() {
     }
     
     // Use ESRI JavaScript API for 3D map and view
-    (window as any).require(['esri/Map', 'esri/views/SceneView', 'esri/widgets/NavigationToggle', 'esri/config'], (Map: any, SceneView: any, NavigationToggle: any, esriConfig: any) => {
-      console.log('📦 Map, SceneView, NavigationToggle, and esriConfig modules loaded');
+    (window as any).require(['esri/Map', 'esri/views/SceneView', 'esri/config'], (Map: any, SceneView: any, esriConfig: any) => {
+      console.log('📦 Map, SceneView, and esriConfig modules loaded');
       
       // Disable ESRI authentication to prevent sign-in popups
       esriConfig.request.useIdentity = false;
@@ -104,14 +104,8 @@ export function useMapInitialization() {
           (window as any).esriView = view;
           console.log(`🗺️ Initial basemap: ${currentBasemap}`);
           
-          // Add 3D navigation controls
-          const navigationToggle = new NavigationToggle({
-            view: view,
-            container: document.createElement("div")
-          });
-          
-          // Add 3D navigation to the view UI
-          view.ui.add(navigationToggle, "top-right");
+          // Note: ESRI automatically adds NavigationToggle to SceneView by default
+          // No need to manually add it to avoid duplicates
           
           // Enable 3D keyboard shortcuts
           enable3DKeyboardControls(view);
