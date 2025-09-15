@@ -10,6 +10,9 @@ interface AbuDhabiDataConfig {
   color: string;
   icon: string;
   visible?: boolean;
+  enable3D?: boolean;
+  heightField?: string;
+  heightMultiplier?: number;
 }
 
 export class AbuDhabiRealDataService {
@@ -276,23 +279,34 @@ export class AbuDhabiRealDataService {
         'esri/Graphic'
       ]);
 
-      // Create graphics from GeoJSON features
+      // Create graphics from GeoJSON features with 3D height support
       const graphics = geojsonData.features.map((feature: any) => {
+        const attributes: any = {
+          OBJECTID: feature.id || Math.random().toString(36).substr(2, 9),
+          Name: feature.properties.name || feature.properties['name:en'] || 'Unnamed',
+          Type: feature.properties.amenity || feature.properties.highway || feature.properties.leisure || config.category,
+          Category: config.category,
+          Description: config.description,
+          ...feature.properties
+        };
+
+        // Add height information for 3D buildings
+        if (config.enable3D && config.heightField && config.heightMultiplier) {
+          const levels = parseInt(feature.properties[config.heightField]) || 1;
+          const height = levels * config.heightMultiplier;
+          attributes.Height = height;
+          attributes.Levels = levels;
+          console.log(`🏗️ Building ${attributes.Name}: ${levels} levels = ${height}m height`);
+        }
+
         return new Graphic({
           geometry: this.convertGeoJSONGeometry(feature.geometry),
-          attributes: {
-            OBJECTID: feature.id || Math.random().toString(36).substr(2, 9),
-            Name: feature.properties.name || feature.properties['name:en'] || 'Unnamed',
-            Type: feature.properties.amenity || feature.properties.highway || feature.properties.leisure || config.category,
-            Category: config.category,
-            Description: config.description,
-            ...feature.properties
-          }
+          attributes: attributes
         });
       });
 
-      // Create the feature layer
-      const featureLayer = new FeatureLayer({
+      // Create the feature layer with 3D support for buildings
+      const layerConfig: any = {
         title: config.title,
         id: config.id,
         source: graphics,
@@ -303,7 +317,21 @@ export class AbuDhabiRealDataService {
         renderer: this.createRenderer(config),
         popupTemplate: this.createPopupTemplate(config),
         visible: config.visible || false
-      });
+      };
+
+      // Add 3D extrusion for buildings
+      if (config.enable3D && config.heightField && config.heightMultiplier) {
+        layerConfig.elevationInfo = {
+          mode: "absolute-height",
+          offset: 0,
+          unit: "meters"
+        };
+        
+        // Update renderer to include 3D extrusion
+        layerConfig.renderer = this.create3DRenderer(config);
+      }
+
+      const featureLayer = new FeatureLayer(layerConfig);
 
       // Add to map
       console.log(`🗺️ Adding layer ${config.id} to map...`);
@@ -396,6 +424,16 @@ export class AbuDhabiRealDataService {
         type: 'string',
         length: 255,
         alias: 'Description'
+      },
+      {
+        name: 'Height',
+        type: 'double',
+        alias: 'Height (meters)'
+      },
+      {
+        name: 'Levels',
+        type: 'integer',
+        alias: 'Building Levels'
       }
     ];
   }
@@ -443,6 +481,43 @@ export class AbuDhabiRealDataService {
         }
       };
     }
+  }
+
+  private create3DRenderer(config: AbuDhabiDataConfig) {
+    const color = this.hexToRgb(config.color);
+    console.log(`🏗️ Creating 3D renderer for ${config.id}: color=${config.color} -> RGB(${color.join(',')})`);
+    
+    if (config.geometry_type === 'polygon' && config.enable3D) {
+      return {
+        type: 'simple',
+        symbol: {
+          type: 'polygon-3d',
+          symbolLayers: [{
+            type: 'extrude',
+            material: {
+              color: [...color, 0.8] // Slightly transparent for 3D effect
+            },
+            edges: {
+              type: 'solid',
+              color: color,
+              size: 1
+            },
+            // Use the Height field for extrusion
+            size: {
+              type: 'size',
+              field: 'Height',
+              minDataValue: 0,
+              maxDataValue: 300, // Max 300m height
+              minSize: 3, // Minimum 3m height
+              maxSize: 300 // Maximum 300m height
+            }
+          }]
+        }
+      };
+    }
+    
+    // Fallback to regular renderer if not 3D
+    return this.createRenderer(config);
   }
 
   private createPopupTemplate(config: AbuDhabiDataConfig) {
