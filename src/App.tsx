@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import Header from "./components/Header";
 import Index from "./pages/Index";
 import DataQuery from "./pages/DataQuery";
+import Visualization from "./pages/Visualization";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -18,6 +19,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/data-query" element={<DataQuery />} />
+            <Route path="/visualization" element={<Visualization />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

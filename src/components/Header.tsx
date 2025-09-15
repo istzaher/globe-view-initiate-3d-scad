@@ -6,7 +6,8 @@ const Header = () => {
 
   const navItems = [
     { path: '/', label: 'Chat With AI', id: 'chat' },
-    { path: '/data-query', label: 'Data Query', id: 'data-query' }
+    { path: '/data-query', label: 'Data Query', id: 'data-query' },
+    { path: '/visualization', label: 'Visualization', id: 'visualization' }
   ];
 
   return (

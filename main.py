@@ -1746,6 +1746,11 @@ def get_default_suggestions() -> List[Dict[str, Any]]:
             "confidence": 0.8
         },
         {
+            "question": "Display all buildings in Abu Dhabi",
+            "type": "spatial",
+            "confidence": 0.9
+        },
+        {
             "question": "Find parking areas near buildings",
             "type": "spatial",
             "confidence": 0.8
@@ -1899,14 +1904,14 @@ def load_abu_dhabi_datasets() -> Dict[str, Dict]:
         logger.warning(f"Data directory not found: {data_dir}")
         return datasets
     
-    # Map file names to dataset keys
+    # Map file names to dataset keys (matching REAL_ABU_DHABI_DATASETS keys)
     file_mapping = {
-        "bus_stops_query.geojson": "bus_stops",
-        "mosques_query.geojson": "mosques", 
-        "Parks_In_Bbox.geojson": "parks",
-        "Parking_Areas.geojson": "parking",
-        "BuildingStructures.geojson": "buildings",
-        "Roads_Query.geojson": "roads"
+        "bus_stops_query.geojson": "bus_stops_real",
+        "mosques_query.geojson": "mosques_real", 
+        "Parks_In_Bbox.geojson": "parks_real",
+        "Parking_Areas.geojson": "parking_real",
+        "BuildingStructures.geojson": "buildings_real",
+        "Roads_Query.geojson": "roads_real"
     }
     
     for filename, dataset_key in file_mapping.items():
@@ -2390,6 +2395,313 @@ async def delete_document(file_id: str):
         }
     else:
         raise HTTPException(status_code=404, detail="Document not found")
+
+# Visualization Endpoints
+# =====================
+
+class VisualizationRequest(BaseModel):
+    dataSource: str  # 'spatial', 'document', 'combined'
+    chartType: str   # 'bar', 'pie', 'line', 'scatter', 'heatmap', 'wordcloud', 'timeline'
+    spatialLayers: Optional[List[str]] = []
+    documentIds: Optional[List[str]] = []
+    analysisType: str  # 'count', 'distribution', 'correlation', 'trend', 'clustering', 'summary'
+    filters: Optional[Dict[str, Any]] = {}
+    customQuery: Optional[str] = None
+
+class VisualizationResponse(BaseModel):
+    success: bool
+    chartType: str
+    data: Dict[str, Any]
+    title: str
+    description: str
+    spatialContext: Optional[Dict[str, Any]] = None
+    documentContext: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+
+@app.get("/api/spatial-layers")
+async def get_spatial_layers():
+    """Get available spatial layers for visualization."""
+    try:
+        layers = []
+        for layer_id, layer_info in REAL_ABU_DHABI_DATASETS.items():
+            layers.append({
+                'id': layer_id,
+                'name': layer_info['name'],
+                'category': layer_info['category'],
+                'featureCount': layer_info['features'],
+                'geometryType': layer_info['geometry_type']
+            })
+        
+        return {
+            'success': True,
+            'layers': layers
+        }
+    except Exception as e:
+        logger.error(f"❌ Error fetching spatial layers: {e}")
+        return {
+            'success': False,
+            'error': str(e),
+            'layers': []
+        }
+
+@app.post("/api/visualize-spatial", response_model=VisualizationResponse)
+async def visualize_spatial_data(request: VisualizationRequest):
+    """Generate visualizations from spatial map data."""
+    try:
+        if not request.spatialLayers:
+            return VisualizationResponse(
+                success=False,
+                chartType=request.chartType,
+                data={},
+                title="Error",
+                description="No spatial layers specified",
+                error="Please select at least one spatial layer"
+            )
+        
+        # Load spatial data
+        spatial_data = load_abu_dhabi_datasets()
+        logger.info(f"🔍 Loaded spatial data keys: {list(spatial_data.keys())}")
+        analysis_results = {}
+        
+        for layer_id in request.spatialLayers:
+            logger.info(f"🔍 Processing layer: {layer_id}")
+            if layer_id in spatial_data:
+                features = spatial_data[layer_id].get('features', [])
+                logger.info(f"🔍 Found {len(features)} features for {layer_id}")
+                analysis_results[layer_id] = analyze_spatial_features(features, request.analysisType)
+                logger.info(f"🔍 Analysis result for {layer_id}: {analysis_results[layer_id]}")
+            else:
+                logger.warning(f"⚠️ Layer {layer_id} not found in spatial data")
+        
+        # Generate chart data based on analysis type
+        chart_data = generate_chart_data(analysis_results, request.chartType, request.analysisType)
+        
+        # Create response
+        layer_info = REAL_ABU_DHABI_DATASETS.get(request.spatialLayers[0], {})
+        
+        return VisualizationResponse(
+            success=True,
+            chartType=request.chartType,
+            data=chart_data,
+            title=f"{layer_info.get('name', 'Spatial Data')} Analysis",
+            description=f"Analysis of {request.analysisType} for selected spatial layers",
+            spatialContext={
+                'layers': request.spatialLayers,
+                'totalFeatures': sum(len(spatial_data.get(layer, {}).get('features', [])) for layer in request.spatialLayers),
+                'analysisType': request.analysisType
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ Spatial visualization error: {e}")
+        return VisualizationResponse(
+            success=False,
+            chartType=request.chartType,
+            data={},
+            title="Error",
+            description="Failed to generate spatial visualization",
+            error=str(e)
+        )
+
+@app.post("/api/visualize-documents", response_model=VisualizationResponse)
+async def visualize_document_data(request: VisualizationRequest):
+    """Generate visualizations from uploaded document data."""
+    try:
+        if not request.documentIds:
+            return VisualizationResponse(
+                success=False,
+                chartType=request.chartType,
+                data={},
+                title="Error",
+                description="No documents specified",
+                error="Please select at least one document"
+            )
+        
+        # Process document data
+        document_analysis = {}
+        for doc_id in request.documentIds:
+            if doc_id in uploaded_documents:
+                doc_data = uploaded_documents[doc_id]
+                document_analysis[doc_id] = analyze_document_data(doc_data, request.analysisType)
+        
+        # Generate chart data
+        chart_data = generate_document_chart_data(document_analysis, request.chartType, request.analysisType)
+        
+        # Get document info
+        doc_info = uploaded_documents.get(request.documentIds[0], {})
+        
+        return VisualizationResponse(
+            success=True,
+            chartType=request.chartType,
+            data=chart_data,
+            title=f"Document Analysis - {doc_info.get('filename', 'Unknown')}",
+            description=f"Analysis of {request.analysisType} from uploaded documents",
+            documentContext={
+                'documents': request.documentIds,
+                'analysisType': request.analysisType
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ Document visualization error: {e}")
+        return VisualizationResponse(
+            success=False,
+            chartType=request.chartType,
+            data={},
+            title="Error",
+            description="Failed to generate document visualization",
+            error=str(e)
+        )
+
+@app.post("/api/visualize-combined", response_model=VisualizationResponse)
+async def visualize_combined_data(request: VisualizationRequest):
+    """Generate visualizations from both spatial and document data."""
+    try:
+        # This would combine spatial and document analysis
+        # For now, prioritize spatial data if available
+        if request.spatialLayers:
+            return await visualize_spatial_data(request)
+        elif request.documentIds:
+            return await visualize_document_data(request)
+        else:
+            return VisualizationResponse(
+                success=False,
+                chartType=request.chartType,
+                data={},
+                title="Error",
+                description="No data sources specified",
+                error="Please select spatial layers or documents"
+            )
+    except Exception as e:
+        logger.error(f"❌ Combined visualization error: {e}")
+        return VisualizationResponse(
+            success=False,
+            chartType=request.chartType,
+            data={},
+            title="Error",
+            description="Failed to generate combined visualization",
+            error=str(e)
+        )
+
+def analyze_spatial_features(features: List[Dict], analysis_type: str) -> Dict[str, Any]:
+    """Analyze spatial features based on analysis type."""
+    if not features:
+        return {}
+    
+    if analysis_type == 'count':
+        return {
+            'total_count': len(features),
+            'geometry_types': list(set(f.get('geometry', {}).get('type', 'Unknown') for f in features))
+        }
+    elif analysis_type == 'distribution':
+        # Analyze distribution by categories or properties
+        categories = {}
+        for feature in features:
+            props = feature.get('properties', {})
+            category = props.get('category', props.get('type', 'Unknown'))
+            categories[category] = categories.get(category, 0) + 1
+        return {'distribution': categories}
+    elif analysis_type == 'clustering':
+        # Simple clustering analysis
+        return {
+            'clusters': len(features) // 10,  # Simple heuristic
+            'density': len(features)
+        }
+    else:
+        return {'total_count': len(features)}
+
+def analyze_document_data(doc_data: Dict, analysis_type: str) -> Dict[str, Any]:
+    """Analyze document data based on analysis type."""
+    text = doc_data.get('text', '')
+    metadata = doc_data.get('metadata', {})
+    
+    if analysis_type == 'summary':
+        return {
+            'word_count': len(text.split()),
+            'char_count': len(text),
+            'file_size': metadata.get('file_size', 0),
+            'file_type': metadata.get('mime_type', 'unknown')
+        }
+    elif analysis_type == 'distribution':
+        # Analyze word frequency
+        words = text.lower().split()
+        word_freq = {}
+        for word in words:
+            if len(word) > 3:  # Filter short words
+                word_freq[word] = word_freq.get(word, 0) + 1
+        
+        # Get top 10 words
+        top_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)[:10]
+        return {'word_distribution': dict(top_words)}
+    else:
+        return {'text_length': len(text)}
+
+def generate_chart_data(analysis_results: Dict, chart_type: str, analysis_type: str) -> Dict[str, Any]:
+    """Generate chart data from analysis results."""
+    if chart_type == 'bar':
+        labels = []
+        data = []
+        for layer_id, result in analysis_results.items():
+            labels.append(layer_id.replace('_', ' ').title())
+            if analysis_type == 'count':
+                data.append(result.get('total_count', 0))
+            elif analysis_type == 'distribution':
+                data.append(len(result.get('distribution', {})))
+            else:
+                data.append(result.get('total_count', 0))
+        
+        return {
+            'labels': labels,
+            'datasets': [{
+                'label': 'Feature Count',
+                'data': data,
+                'backgroundColor': ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd'][:len(data)]
+            }]
+        }
+    elif chart_type == 'pie':
+        # Similar logic for pie chart
+        labels = []
+        data = []
+        for layer_id, result in analysis_results.items():
+            labels.append(layer_id.replace('_', ' ').title())
+            data.append(result.get('total_count', 0))
+        
+        return {
+            'labels': labels,
+            'datasets': [{
+                'label': 'Feature Count',
+                'data': data,
+                'backgroundColor': ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd'][:len(data)]
+            }]
+        }
+    else:
+        # Default to bar chart
+        return generate_chart_data(analysis_results, 'bar', analysis_type)
+
+def generate_document_chart_data(document_analysis: Dict, chart_type: str, analysis_type: str) -> Dict[str, Any]:
+    """Generate chart data from document analysis."""
+    if chart_type == 'bar':
+        labels = []
+        data = []
+        for doc_id, result in document_analysis.items():
+            labels.append(doc_id[:8] + '...')  # Truncate doc ID
+            if analysis_type == 'summary':
+                data.append(result.get('word_count', 0))
+            elif analysis_type == 'distribution':
+                data.append(len(result.get('word_distribution', {})))
+            else:
+                data.append(result.get('text_length', 0))
+        
+        return {
+            'labels': labels,
+            'datasets': [{
+                'label': 'Document Metrics',
+                'data': data,
+                'backgroundColor': ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd'][:len(data)]
+            }]
+        }
+    else:
+        return generate_document_chart_data(document_analysis, 'bar', analysis_type)
 
 # Serve static files
 if static_dir.exists():

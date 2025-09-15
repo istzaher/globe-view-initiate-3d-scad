@@ -1053,9 +1053,153 @@ export class AbuDhabiRealDataService {
       
       console.log('✅ LLM results displayed on map successfully');
       
+      // Zoom to the displayed results
+      await this.zoomToLLMResults(mapFeatures);
+      
     } catch (error) {
       console.error('❌ Error displaying LLM results on map:', error);
     }
+  }
+
+  /**
+   * Zoom to LLM results extent
+   */
+  private async zoomToLLMResults(mapFeatures: any) {
+    if (!this.view) {
+      console.warn('⚠️ Map view not available for zooming to LLM results');
+      return;
+    }
+
+    try {
+      console.log('🔍 Zooming to LLM results extent...');
+      
+      // Collect all features from all datasets
+      const allFeatures: any[] = [];
+      for (const [datasetName, featureCollection] of Object.entries(mapFeatures)) {
+        if (featureCollection && typeof featureCollection === 'object') {
+          const dataset = featureCollection as any;
+          if (dataset.features && dataset.features.length > 0) {
+            allFeatures.push(...dataset.features);
+          }
+        }
+      }
+
+      if (allFeatures.length === 0) {
+        console.warn('⚠️ No features to zoom to');
+        return;
+      }
+
+      console.log(`🎯 Zooming to ${allFeatures.length} features from LLM results`);
+
+      // Calculate extent from all features
+      let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
+      
+      for (const feature of allFeatures) {
+        if (feature.geometry && feature.geometry.coordinates) {
+          const coords = this.extractCoordinates(feature.geometry);
+          for (const [lon, lat] of coords) {
+            minLon = Math.min(minLon, lon);
+            maxLon = Math.max(maxLon, lon);
+            minLat = Math.min(minLat, lat);
+            maxLat = Math.max(maxLat, lat);
+          }
+        }
+      }
+
+      if (minLon === Infinity) {
+        console.warn('⚠️ Could not extract coordinates for zooming');
+        return;
+      }
+
+      // Calculate center and appropriate zoom level
+      const centerLon = (minLon + maxLon) / 2;
+      const centerLat = (minLat + maxLat) / 2;
+      
+      const lonDiff = maxLon - minLon;
+      const latDiff = maxLat - minLat;
+      const maxDiff = Math.max(lonDiff, latDiff);
+      
+      let zoom = 10;
+      if (maxDiff < 0.01) zoom = 16;
+      else if (maxDiff < 0.05) zoom = 14;
+      else if (maxDiff < 0.1) zoom = 12;
+      else if (maxDiff < 0.5) zoom = 10;
+      else zoom = 8;
+
+      // Add some padding to the extent
+      const padding = Math.max(lonDiff, latDiff) * 0.1;
+      const paddedMinLon = minLon - padding;
+      const paddedMaxLon = maxLon + padding;
+      const paddedMinLat = minLat - padding;
+      const paddedMaxLat = maxLat + padding;
+
+      // Use ArcGIS extent for more accurate zooming
+      const [Extent] = await loadModules(['esri/geometry/Extent']);
+      
+      const extent = new Extent({
+        xmin: paddedMinLon,
+        ymin: paddedMinLat,
+        xmax: paddedMaxLon,
+        ymax: paddedMaxLat,
+        spatialReference: { wkid: 4326 }
+      });
+
+      // Zoom to extent with animation
+      await this.view.goTo(extent, {
+        duration: 1000,
+        easing: "ease-in-out"
+      });
+
+      console.log(`✅ Zoomed to LLM results extent: center [${centerLon.toFixed(6)}, ${centerLat.toFixed(6)}], zoom ${zoom}`);
+
+    } catch (error) {
+      console.error('❌ Error zooming to LLM results:', error);
+    }
+  }
+
+  /**
+   * Extract coordinates from various geometry types
+   */
+  private extractCoordinates(geometry: any): [number, number][] {
+    const coords: [number, number][] = [];
+    
+    switch (geometry.type.toLowerCase()) {
+      case 'point':
+        coords.push([geometry.coordinates[0], geometry.coordinates[1]]);
+        break;
+      case 'polygon':
+        // Extract all rings (exterior and holes)
+        for (const ring of geometry.coordinates) {
+          for (const coord of ring) {
+            coords.push([coord[0], coord[1]]);
+          }
+        }
+        break;
+      case 'multipolygon':
+        // Extract all polygons
+        for (const polygon of geometry.coordinates) {
+          for (const ring of polygon) {
+            for (const coord of ring) {
+              coords.push([coord[0], coord[1]]);
+            }
+          }
+        }
+        break;
+      case 'linestring':
+        for (const coord of geometry.coordinates) {
+          coords.push([coord[0], coord[1]]);
+        }
+        break;
+      case 'multilinestring':
+        for (const line of geometry.coordinates) {
+          for (const coord of line) {
+            coords.push([coord[0], coord[1]]);
+          }
+        }
+        break;
+    }
+    
+    return coords;
   }
 
   /**

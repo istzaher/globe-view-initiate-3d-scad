@@ -552,19 +552,62 @@ export const useNLQuery = () => {
   };
 
   // Helper function to zoom to results
-  const zoomToResults = async (processedResults: ProcessedResult[], view: ESRIView) => {
+  const zoomToResults = async (processedResults: ProcessedResult[], view: ESRIView, graphicsLayer?: any) => {
     if (processedResults.length === 0) return;
     
     try {
+      // Add a small delay to ensure graphics are rendered
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       if (processedResults.length === 1) {
         // Single point - zoom to location
         const result = processedResults[0];
         await view.goTo({
           center: [result.longitude, result.latitude],
           zoom: 15
+        }, {
+          duration: 1000, // 1 second animation
+          easing: "ease-in-out"
         });
+        console.log(`🎯 Zoomed to single point: [${result.longitude}, ${result.latitude}]`);
       } else {
-        // Multiple points - zoom to extent
+        // Multiple points - try to use graphics layer extent first
+        if (graphicsLayer && graphicsLayer.graphics && graphicsLayer.graphics.length > 0) {
+          try {
+            // Calculate extent from graphics
+            const graphics = graphicsLayer.graphics.items || graphicsLayer.graphics;
+            if (graphics && graphics.length > 0) {
+              // Use ArcGIS API to calculate extent from graphics
+              const [Extent] = await new Promise<[any]>((resolve, reject) => {
+                require(['esri/geometry/Extent'], resolve, reject);
+              });
+              
+              let extent = null;
+              for (const graphic of graphics) {
+                if (graphic.geometry && graphic.geometry.extent) {
+                  if (extent) {
+                    extent = extent.union(graphic.geometry.extent);
+                  } else {
+                    extent = graphic.geometry.extent;
+                  }
+                }
+              }
+              
+              if (extent) {
+                await view.goTo(extent.expand(1.2), {
+                  duration: 1000, // 1 second animation
+                  easing: "ease-in-out"
+                });
+                console.log(`🎯 Zoomed to calculated graphics extent`);
+                return;
+              }
+            }
+          } catch (extentError) {
+            console.warn('Could not calculate graphics extent, falling back to manual calculation:', extentError);
+          }
+        }
+        
+        // Fallback to manual calculation
         const lons = processedResults.map(r => r.longitude);
         const lats = processedResults.map(r => r.latitude);
         
@@ -591,7 +634,11 @@ export const useNLQuery = () => {
         await view.goTo({
           center: [centerLon, centerLat],
           zoom: zoom
+        }, {
+          duration: 1000, // 1 second animation
+          easing: "ease-in-out"
         });
+        console.log(`🎯 Zoomed to calculated extent: center [${centerLon}, ${centerLat}], zoom ${zoom}`);
       }
     } catch (zoomError) {
       console.warn('Could not zoom to results:', zoomError);
@@ -1093,7 +1140,7 @@ export const useNLQuery = () => {
         // ALWAYS zoom to results extent - never skip based on count
         if (processedResults.length > 0) {
           console.log(`🔍 Zooming to results extent (${processedResults.length} features)...`);
-          await zoomToResults(processedResults, view);
+          await zoomToResults(processedResults, view, graphicsLayer);
           
           // Log zoom completion with progressive display info for large datasets
           if (processedResults.length > 1000) {
