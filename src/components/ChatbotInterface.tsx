@@ -372,7 +372,7 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
         <div className="p-4 border-t border-purple-700/50 bg-black/40 backdrop-blur-sm">
           <p className="text-white font-medium text-sm mb-3">Suggested follow-ups:</p>
           <div className="flex flex-wrap gap-2">
-            {followUpSuggestions.slice(0, 3).map((suggestion, index) => (
+            {followUpSuggestions.slice(0, 4).map((suggestion, index) => (
               <Button
                 key={index}
                 variant="outline"

@@ -192,6 +192,13 @@ export class NLPQueryService {
       return query; // Pass the full query to be processed by parseAnalyticalQuery
     }
     
+    // Handle general building queries (show all buildings)
+    if (queryLower.includes('building') && 
+        (queryLower.includes('all') || queryLower.includes('show') || queryLower.includes('every'))) {
+      console.log(`🏗️ General building query detected: ${query} - returning all buildings`);
+      return '1=1'; // Return all buildings
+    }
+    
     // For Abu Dhabi datasets, skip location filtering since they're already geographically filtered
     if (queryLower.includes('abu dhabi') || queryLower.includes('abu') || 
         queryLower.includes('city center') || queryLower.includes('city centre') ||

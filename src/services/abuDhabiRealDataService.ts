@@ -92,7 +92,7 @@ export class AbuDhabiRealDataService {
         file: '/data/BuildingStructures.geojson',
         geometry_type: 'polygon',
         category: 'infrastructure',
-        color: '#6b7280',
+        color: '#3b82f6',
         icon: 'building',
         visible: false
       },
@@ -181,7 +181,7 @@ export class AbuDhabiRealDataService {
         file: '/data/BuildingStructures.geojson',
         geometry_type: 'polygon',
         category: 'infrastructure',
-        color: '#6b7280',
+        color: '#3b82f6',
         icon: 'building',
         visible: false
       },
@@ -476,10 +476,10 @@ export class AbuDhabiRealDataService {
         type: 'simple',
         symbol: {
           type: 'simple-fill',
-          color: [...color, 0.6], // Increased opacity for better visibility
+          color: [...color, 0.8], // Increased opacity for better visibility
           outline: {
             color: color,
-            width: config.id === 'mosques_real' ? 3 : 2 // Thicker outline for mosques
+            width: config.id === 'mosques_real' ? 3 : 3 // Thicker outline for better visibility
           }
         }
       };
@@ -509,12 +509,12 @@ export class AbuDhabiRealDataService {
           symbolLayers: [{
             type: 'extrude',
             material: {
-              color: [...color, 0.7] // More opaque for better visibility
+              color: [...color, 0.9] // More opaque for better visibility
             },
             edges: {
               type: 'solid',
               color: color,
-              size: 2 // Thicker edges for better visibility
+              size: 3 // Thicker edges for better visibility
             }
           }]
         }
