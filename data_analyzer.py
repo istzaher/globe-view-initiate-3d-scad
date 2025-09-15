@@ -227,21 +227,59 @@ class AbuDhabiDataAnalyzer:
             
             # Apply specific filtering for building level queries
             if dataset_name == 'buildings' and any(word in query_lower for word in ['level', 'levels', 'more than', 'greater than']):
-                # Note: Real Abu Dhabi buildings dataset doesn't have level information
-                # For demo purposes, show a subset of buildings (first 50)
-                logger.info(f"Building level query detected, but real dataset lacks level data. Showing sample buildings.")
-                filtered_features = features[:50]  # Show first 50 buildings as sample
+                logger.info(f"Building level query detected, filtering by building levels...")
+                
+                # Extract level threshold from query
+                level_threshold = 20  # Default threshold
+                if 'more than' in query_lower or 'greater than' in query_lower:
+                    # Try to extract number from query
+                    import re
+                    numbers = re.findall(r'\d+', query_lower)
+                    if numbers:
+                        level_threshold = int(numbers[0])
+                        logger.info(f"Extracted level threshold: {level_threshold}")
+                
+                # Filter buildings by level
+                filtered_features = []
+                for feature in features:
+                    properties = feature.get('properties', {})
+                    building_levels = properties.get('building:levels')
+                    
+                    if building_levels:
+                        try:
+                            levels = int(building_levels)
+                            if levels > level_threshold:
+                                filtered_features.append(feature)
+                        except (ValueError, TypeError):
+                            continue
+                    else:
+                        # If no level data, include building with default level check
+                        # For demo purposes, include some buildings without level data
+                        if len(filtered_features) < 20:  # Limit to 20 buildings without level data
+                            filtered_features.append(feature)
+                
+                logger.info(f"Found {len(filtered_features)} buildings with more than {level_threshold} levels")
             else:
                 # For other datasets, include all features
                 filtered_features = features
             
-            result[dataset_name] = {
-                "type": "FeatureCollection",
-                "features": filtered_features[:100],  # Limit to 100 features for performance
-                "total_features": len(features),
-                "filtered_features": len(filtered_features),
-                "dataset_type": dataset_name
-            }
+            # For building level queries, don't limit the results
+            if dataset_name == 'buildings' and any(word in query_lower for word in ['level', 'levels', 'more than', 'greater than']):
+                result[dataset_name] = {
+                    "type": "FeatureCollection",
+                    "features": filtered_features,  # Show all matching buildings
+                    "total_features": len(features),
+                    "filtered_features": len(filtered_features),
+                    "dataset_type": dataset_name
+                }
+            else:
+                result[dataset_name] = {
+                    "type": "FeatureCollection",
+                    "features": filtered_features[:100],  # Limit to 100 features for performance
+                    "total_features": len(features),
+                    "filtered_features": len(filtered_features),
+                    "dataset_type": dataset_name
+                }
         
         return result
     

@@ -21,6 +21,7 @@ export const NLQueryInterface: React.FC<NLQueryInterfaceProps> = ({
   const [query, setQuery] = useState('');
   const [recentQueries, setRecentQueries] = useState<string[]>([]);
   const [suggestions] = useState<string[]>([
+    'Show me buildings',
     'Show all schools in Abu Dhabi',
     'Find hospitals near Emirates Palace',
     'List universities in Al Ain',

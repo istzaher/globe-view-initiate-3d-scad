@@ -336,7 +336,7 @@ export class NLPQueryService {
         
         await this.abuDhabiRealDataService.loadSpecificDataset(layerId);
         
-        const queryResult = await this.abuDhabiRealDataService.queryLayer(layerId, { where: queryString });
+        const queryResult = await this.abuDhabiRealDataService.queryLayer(layerId, { where: queryString }, userMessage);
         features = queryResult ? queryResult.features : [];
         
         // Store statistics from the query result

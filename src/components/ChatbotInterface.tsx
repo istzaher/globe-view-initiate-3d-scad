@@ -74,6 +74,7 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
     if (visibleLayers.length === 0) {
       // Default suggestions when no layers are visible
       suggestions.push(
+        { question: "Show me buildings", type: "spatial", confidence: 0.95 },
         { question: "Show all bus stops in Abu Dhabi", type: "spatial", confidence: 0.9 },
         { question: "Find mosques near city center", type: "spatial", confidence: 0.9 },
         { question: "Display parks and green spaces", type: "spatial", confidence: 0.8 },

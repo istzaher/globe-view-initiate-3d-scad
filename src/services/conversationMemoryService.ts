@@ -285,6 +285,11 @@ class ConversationMemoryService {
   private getInitialSuggestions(): FollowUpSuggestion[] {
     return [
       {
+        question: "Show me buildings",
+        type: 'spatial',
+        confidence: 0.95
+      },
+      {
         question: "Show me all schools in Abu Dhabi",
         type: 'spatial',
         confidence: 0.9
