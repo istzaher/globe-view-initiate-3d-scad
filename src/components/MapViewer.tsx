@@ -227,7 +227,7 @@ const MapViewer = () => {
             <MapContainer ref={mapContainerRef} />
             
             {/* Esri Map Tools - Bottom Left */}
-            {viewRef.current && (
+            {/* {viewRef.current && (
               <EsriMapTools 
                 view={viewRef.current}
                 currentBasemap={currentBasemap}
@@ -235,7 +235,7 @@ const MapViewer = () => {
                   console.log(`🗺️ Basemap changed to: ${basemap}`);
                 }}
               />
-            )}
+            )} */}
             
             {/* Results Panel - overlay on map when there are results */}
             <MapResultsPanel

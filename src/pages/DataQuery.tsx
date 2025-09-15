@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
 
 const DataQuery = () => {
@@ -18,12 +17,6 @@ const DataQuery = () => {
   // API base URL
   const API_BASE_URL = 'http://localhost:8000';
 
-  const suggestedQueries = [
-    'Summarize methodology for District Pulse',
-    'Extract key economic indicators',
-    'Find population census procedures',
-    'Compare data collection methods'
-  ];
 
   // Fetch uploaded documents on component mount
   useEffect(() => {
@@ -173,9 +166,6 @@ const DataQuery = () => {
     }
   };
 
-  const handleSuggestedQuery = (suggestedQuery: string) => {
-    setQuery(suggestedQuery);
-  };
 
   const deleteDocument = async (fileId: string) => {
     try {
@@ -360,8 +350,8 @@ const DataQuery = () => {
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                       placeholder="Example: Summarize methodology for District Pulse..."
-                      className="w-full h-32 p-3 text-base resize-none"
-                      style={{ minHeight: '128px', paddingTop: '12px' }}
+                      className="w-full h-4 p-3 text-base resize-none"
+                      style={{ minHeight: '30px', paddingTop: '1px' }}
                     />
                   </div>
                 </div>
@@ -374,26 +364,6 @@ const DataQuery = () => {
                   {isQuerying ? '🔄 Processing...' : '🔍 Query Documents'}
                 </Button>
 
-                <Separator />
-
-                <div>
-                  <Label className="text-sm font-medium text-gray-700 mb-3 block">
-                    Suggested queries:
-                  </Label>
-                  <div className="space-y-2">
-                    {suggestedQueries.map((suggestedQuery, index) => (
-                      <Button
-                        key={index}
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleSuggestedQuery(suggestedQuery)}
-                        className="w-full justify-start text-left text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                      >
-                        {suggestedQuery}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
               </CardContent>
             </Card>
 

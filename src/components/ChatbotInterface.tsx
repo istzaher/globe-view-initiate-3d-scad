@@ -291,14 +291,6 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
             <p className="text-gray-200 text-xs font-medium">Abu Dhabi Spatial Analysis</p>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsOpen(!isOpen)}
-          className="text-white hover:text-white hover:bg-purple-600/50 transition-colors"
-        >
-          <X className="w-4 h-4" />
-        </Button>
       </div>
 
       {/* Messages Area */}
@@ -398,20 +390,7 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
       {/* Input Area */}
       <div className="p-4 border-t border-purple-700/50 bg-black/40 backdrop-blur-sm">
         <form onSubmit={handleSubmit} className="flex items-center space-x-3">
-          {/* User Avatar */}
-          <div className="w-8 h-8 bg-red-600 text-white rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold shadow-lg">
-            AP
-          </div>
-          
-          {/* Plus Button */}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="w-8 h-8 p-0 text-white hover:text-white hover:bg-purple-600/50 rounded-lg transition-colors"
-          >
-            <MessageSquare className="w-4 h-4" />
-          </Button>
+
 
           {/* Input Field */}
           <div className="flex-1 relative">
