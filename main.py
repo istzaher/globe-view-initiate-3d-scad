@@ -1942,12 +1942,12 @@ def determine_query_intent(message: str) -> tuple:
     elif any(word in message_lower for word in ['parking', 'lot', 'garage']):
         return "spatial", "parking"
     elif any(word in message_lower for word in ['building', 'structure', 'level', 'floor']):
-        return "spatial", "buildings"
+        return "spatial", "buildings_real"
     elif any(word in message_lower for word in ['road', 'street', 'highway']):
         return "spatial", "roads"
     else:
         # Default to buildings for general spatial queries
-        return "general", "buildings"
+        return "general", "buildings_real"
 
 def filter_features_by_query(dataset: Dict, query: str, query_type: str) -> Dict:
     """Filter dataset features based on query content"""
@@ -1959,11 +1959,30 @@ def filter_features_by_query(dataset: Dict, query: str, query_type: str) -> Dict
     
     # For building level queries, filter by building:levels property
     if 'level' in query_lower and 'building' in query_lower:
-        # Extract level number from query
+        # Extract level number from query - support multiple patterns
         import re
-        level_match = re.search(r'(\d+)\s*level', query_lower)
-        if level_match:
-            min_levels = int(level_match.group(1))
+        level_patterns = [
+            r'(\d+)\s*level',  # "20 level"
+            r'(\d+)\s*floor',  # "20 floor"
+            r'(\d+)\s*story',  # "20 story"
+            r'more than (\d+)',  # "more than 20"
+            r'greater than (\d+)',  # "greater than 20"
+            r'over (\d+)',  # "over 20"
+            r'above (\d+)',  # "above 20"
+            r'(\d+)\+',  # "20+"
+            r'at least (\d+)',  # "at least 20"
+            r'minimum (\d+)'  # "minimum 20"
+        ]
+        
+        min_levels = None
+        for pattern in level_patterns:
+            level_match = re.search(pattern, query_lower)
+            if level_match:
+                min_levels = int(level_match.group(1))
+                logger.info(f"🏗️ Extracted level threshold: {min_levels} from pattern: {pattern}")
+                break
+        
+        if min_levels is not None:
             filtered_features = []
             
             for feature in features:
@@ -1976,6 +1995,8 @@ def filter_features_by_query(dataset: Dict, query: str, query_type: str) -> Dict
                 except (ValueError, TypeError):
                     # Skip features with invalid level data
                     continue
+            
+            logger.info(f"🏗️ Found {len(filtered_features)} buildings with more than {min_levels} levels")
             
             return {
                 "type": "FeatureCollection",
