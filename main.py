@@ -2299,13 +2299,43 @@ async def upload_document(file: UploadFile = File(...)):
         
         # Store the document in memory (in production, use a database)
         file_id = f"doc_{int(time.time())}_{hash(file.filename) % 10000}"
+        
+        # Try to process the document if processor is available
+        processed_text = None
+        processing_success = False
+        
+        if document_processor:
+            try:
+                logger.info(f"📄 Processing document: {file.filename}")
+                # Create a temporary file for processing
+                with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as temp_file:
+                    temp_file.write(file_content)
+                    temp_file_path = temp_file.name
+                
+                # Process the document
+                result = document_processor.process_document(temp_file_path)
+                if result and result.get('success'):
+                    processed_text = result.get('text', '')
+                    processing_success = True
+                    logger.info(f"✅ Document processed successfully: {len(processed_text)} characters extracted")
+                else:
+                    logger.warning(f"⚠️ Document processing failed: {result.get('error', 'Unknown error')}")
+                
+                # Clean up temporary file
+                os.unlink(temp_file_path)
+                
+            except Exception as e:
+                logger.error(f"❌ Error processing document: {e}")
+        else:
+            logger.warning("⚠️ Document processor not available - storing without processing")
+        
         uploaded_documents[file_id] = {
             "filename": file.filename,
             "file_size": len(file_content),
             "upload_time": time.time(),
             "content": file_content,  # Store content for now
-            "processed": False,
-            "text": None,
+            "processed": processing_success,
+            "text": processed_text,
             "metadata": {
                 "file_type": file.content_type or "unknown",
                 "original_name": file.filename
@@ -2319,7 +2349,7 @@ async def upload_document(file: UploadFile = File(...)):
             file_id=file_id,
             filename=file.filename,
             file_size=len(file_content),
-            message="File uploaded successfully. Processing will be available soon."
+            message="File uploaded successfully." + (" Text extracted." if processing_success else " Processing not available.")
         )
         
         # TODO: Re-enable document processing once dependencies are fixed
