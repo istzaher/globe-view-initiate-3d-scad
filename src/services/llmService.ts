@@ -34,7 +34,8 @@ export class LLMService {
       console.log(`🧠 Generating LLM response for: "${message}"`);
 
       // Call backend endpoint that securely handles OpenRouter API
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/llm/generate`, {
+      const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
+      const response = await fetch(`${baseUrl}/api/llm/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

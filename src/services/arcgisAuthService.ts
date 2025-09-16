@@ -50,7 +50,8 @@ export class ArcGISAuthService {
       console.log('🔐 Generating ArcGIS token via backend proxy for:', serverUrl);
 
       // Use our backend proxy to avoid CORS issues
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/auth/arcgis`, {
+      const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
+      const response = await fetch(`${baseUrl}/api/auth/arcgis`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

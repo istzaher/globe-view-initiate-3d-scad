@@ -212,7 +212,8 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
         sessionId: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       };
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/llm-query`, {
+      const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
+      const response = await fetch(`${baseUrl}/api/llm-query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)
