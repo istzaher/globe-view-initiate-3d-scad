@@ -47,14 +47,15 @@ export class EnhancedQueryService {
     try {
       const startTime = performance.now();
       
-      // Call the enhanced backend endpoint
-      const response = await fetch(`${this.baseUrl}/api/parse-enhanced`, {
+      // Call the backend endpoint
+      const response = await fetch(`${this.baseUrl}/api/parse`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          query: query
+          query: query,
+          dataset: 'buildings_real'
         })
       });
 
@@ -67,17 +68,39 @@ export class EnhancedQueryService {
 
       console.log(`✅ Enhanced query processed in ${processingTime.toFixed(2)}ms`);
       console.log('📊 Result summary:', {
-        hasText: !!result.text,
-        hasGeoJSON: !!result.geojson,
-        hasCenter: !!result.center,
-        hasStatistics: !!result.statistics,
-        featureCount: result.geojson?.features?.length || 0
+        hasFeatures: !!result.features,
+        featureCount: result.features?.length || 0,
+        hasSpatialReference: !!result.spatialReference,
+        hasQueryMetadata: !!result.queryMetadata
       });
 
-      return {
-        ...result,
+      // Convert the API response to the expected format
+      const enhancedResult: EnhancedQueryResult = {
+        success: true,
+        text: `Found ${result.features?.length || 0} buildings in Abu Dhabi`,
+        geojson: {
+          type: "FeatureCollection",
+          features: result.features || []
+        },
+        center: result.features && result.features.length > 0 ? {
+          type: "Point",
+          coordinates: [54.3773, 24.2992] // Abu Dhabi center
+        } : undefined,
+        statistics: {
+          total_count: result.features?.length || 0,
+          search_radius_km: 50,
+          center_coordinates: [54.3773, 24.2992],
+          infrastructure_type: "buildings",
+          where_clause: result.queryMetadata?.where_clause || "OBJECTID IS NOT NULL"
+        },
+        metadata: {
+          operation: "buildings_query",
+          dataset: result.queryMetadata?.dataset || "buildings_real"
+        },
         processing_time: processingTime
       };
+
+      return enhancedResult;
 
     } catch (error) {
       console.error('❌ Enhanced query service error:', error);
