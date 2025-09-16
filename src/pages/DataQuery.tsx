@@ -305,7 +305,7 @@ const DataQuery = () => {
                         <div>
                           <p className="font-medium text-gray-900">{doc.filename}</p>
                           <p className="text-sm text-gray-500">
-                            {formatFileSize(doc.metadata?.file_size || 0)} • {new Date(doc.metadata?.upload_time * 1000).toLocaleDateString()}
+                            {formatFileSize(doc.file_size || 0)} • {new Date((doc.upload_time || 0) * 1000).toLocaleDateString()}
                           </p>
                         </div>
                       </div>
