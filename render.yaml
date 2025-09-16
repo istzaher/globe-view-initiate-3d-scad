@@ -20,13 +20,13 @@ services:
     autoDeploy: true
     branch: main
 
-  # Frontend Service (Static Site)
+  # Frontend Service (Node.js Web Service)
   - type: web
     name: globe-view-initiate-3d-scad-1
-    env: static
+    env: node
     plan: free
     buildCommand: npm install && npm run build
-    staticPublishPath: ./dist
+    startCommand: npm run serve
     envVars:
       - key: VITE_API_BASE_URL
         value: https://globe-view-initiate-3d-scad.onrender.com
@@ -34,10 +34,7 @@ services:
         value: 3D World Explorer
       - key: VITE_APP_VERSION
         value: 1.0.0
+      - key: PORT
+        value: 3000
     autoDeploy: true
     branch: main
-    # SPA routing configuration
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
