@@ -1,7 +1,7 @@
 services:
   # Backend Service (FastAPI)
   - type: web
-    name: globe-view-initiate-genai-ist-backend
+    name: gis-genai-ist-backend
     env: python
     plan: free
     pythonVersion: 3.11
@@ -22,16 +22,16 @@ services:
 
   # Frontend Service (Node.js Web Service)
   - type: web
-    name: globe-view-initiate-genai-ist-frontend
+    name: gis-genai-ist-frontend
     env: node
     plan: free
     buildCommand: npm install && npm run build
     startCommand: npm run serve
     envVars:
       - key: VITE_API_BASE_URL
-        value: https://globe-view-initiate-genai-ist-backend.onrender.com
+        value:https://gis-genai-ist-backend.onrender.com
       - key: VITE_APP_NAME
-        value: 3D World Explorer
+        value: GIS GenAI IST
       - key: VITE_APP_VERSION
         value: 1.0.0
       - key: PORT
