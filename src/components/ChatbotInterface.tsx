@@ -1,5 +1,5 @@
 /**
- * Chatbot Interface Component for SCAD GenAI Tool
+ * Chatbot Interface Component for IST GenAI Tool
  * Simplified version for debugging
  */
 
@@ -130,7 +130,7 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
     if (messages.length === 0) {
       addMessage({
         type: 'assistant',
-        content: "Hello! I'm the SCAD GenAI Assistant. I can help you analyze Abu Dhabi's spatial data using ArcGIS feature layers. Try asking about schools, hospitals, farms, police stations, or other infrastructure. What would you like to explore?",
+        content: "Hello! I'm the IST GenAI Assistant. I can help you analyze Abu Dhabi's spatial data using ArcGIS feature layers. Try asking about schools, hospitals, farms, police stations, or other infrastructure. What would you like to explore?",
         metadata: {
           queryType: 'greeting'
         }
@@ -290,7 +290,7 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
             <Sparkles className="w-4 h-4 text-white" />
           </div>
           <div>
-            <h2 className="text-white font-bold">SCAD GenAI Assistant</h2>
+            <h2 className="text-white font-bold">IST GenAI Assistant</h2>
             <p className="text-gray-200 text-xs font-medium">Abu Dhabi Spatial Analysis</p>
           </div>
         </div>

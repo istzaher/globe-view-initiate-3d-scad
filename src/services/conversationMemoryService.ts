@@ -1,5 +1,5 @@
 /**
- * Conversation Memory Service for SCAD GenAI Tool
+ * Conversation Memory Service for IST GenAI Tool
  * Handles conversation context, memory, and follow-up question processing
  */
 

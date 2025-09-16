@@ -70,8 +70,8 @@ cors_origins = [
     "http://localhost:8080",  # Legacy support
     "http://localhost:5173",  # Vite default
     "https://*.onrender.com",  # Render.com deployments
-    "https://globe-view-initiate-3d-scad-1.onrender.com",  # Your actual Render frontend domain
-    "https://globe-view-initiate-3d-scad.onrender.com",  # Your actual Render backend domain
+    "https://globe-view-initiate-3d-ist-1.onrender.com",  # Your actual Render frontend domain
+    "https://globe-view-initiate-3d-ist.onrender.com",  # Your actual Render backend domain
     "*"  # Allow all for development
 ]
 app.add_middleware(
@@ -134,7 +134,7 @@ class ChatbotRequest(BaseModel):
     conversation: Optional[List[Dict[str, str]]] = []
     spatialContext: Optional[Dict[str, Any]] = None
 
-# SCAD GenAI Tool - Real Abu Dhabi datasets configuration
+# IST GenAI Tool - Real Abu Dhabi datasets configuration
 # Real spatial datasets loaded from public/data/ via frontend
 REAL_ABU_DHABI_DATASETS = {
     # REAL ABU DHABI DATASETS - Loaded from public/data/ via frontend
@@ -251,7 +251,7 @@ def load_local_geojson_data(dataset_config: dict, query: str) -> dict:
         return {"features": [], "spatialReference": {"wkid": 3857}}
 
 def generate_abu_dhabi_mock_data(dataset_config: dict, query: str) -> dict:
-    """Generate mock Abu Dhabi data for SCAD POC demonstration."""
+    """Generate mock Abu Dhabi data for IST POC demonstration."""
     import random
     import time
     
@@ -353,7 +353,7 @@ def parse_simple_query(query: str, dataset: str) -> str:
     query_lower = query.lower()
     logger.info(f"Parsing query: '{query_lower}' for dataset: {dataset}")
     
-    # Dataset-specific mappings for SCAD Abu Dhabi datasets
+    # Dataset-specific mappings for IST Abu Dhabi datasets
     if dataset.startswith('education'):
         # Education specific mappings
         education_mappings = {
@@ -967,21 +967,21 @@ async def parse_enhanced_query(request: dict):
         }
 
 @app.post("/api/parse-complex")
-async def parse_complex_scad_query(request: dict):
-    """Parse complex SCAD queries with advanced spatial analysis capabilities."""
+async def parse_complex_ist_query(request: dict):
+    """Parse complex IST queries with advanced spatial analysis capabilities."""
     try:
         start_time = time.time()
         query_text = request.get("query", "")
         datasets = request.get("datasets", [])
         
-        logger.info(f"Received complex SCAD query: {query_text} for datasets: {datasets}")
+        logger.info(f"Received complex IST query: {query_text} for datasets: {datasets}")
         
         # Import the enhanced parser (with fallback if spaCy not available)
         try:
             from query_parser.spacy_parser import SpacyQueryParser
             parser = SpacyQueryParser()
             # Parse the complex query
-            complex_result = parser.parse_complex_scad_query(query_text, datasets)
+            complex_result = parser.parse_complex_ist_query(query_text, datasets)
         except ImportError as e:
             logger.warning(f"spaCy parser not available: {e}. Using fallback parser.")
             # Fallback to simple parsing
@@ -1088,7 +1088,7 @@ async def parse_complex_scad_query(request: dict):
         }
         
     except Exception as e:
-        logger.error(f"Complex SCAD query processing failed: {str(e)}")
+        logger.error(f"Complex IST query processing failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Complex query processing failed: {str(e)}")
 
 # Chatbot endpoints for GenAI conversation
@@ -1163,7 +1163,7 @@ async def llm_only_query(request: ChatbotRequest):
             )
         
         # Build LLM prompt with data
-        system_prompt = """You are the SCAD GenAI Assistant for Abu Dhabi spatial data analysis. 
+        system_prompt = """You are the IST GenAI Assistant for Abu Dhabi spatial data analysis. 
 
 You have direct access to real Abu Dhabi datasets and their analysis results. When provided with data analysis, you MUST:
 
@@ -1381,10 +1381,10 @@ async def generate_llm_response(request: LLMRequest):
                 "content": request.systemPrompt
             })
         else:
-            # Default SCAD system prompt
+            # Default IST system prompt
             messages.append({
                 "role": "system", 
-                "content": """You are the SCAD GenAI Assistant for Abu Dhabi Statistics Centre.
+                "content": """You are the IST GenAI Assistant for Abu Dhabi Statistics Centre.
                 
 You specialize in:
 - Abu Dhabi GIS and spatial data analysis with detailed statistics
@@ -1580,7 +1580,7 @@ def generate_chatbot_response(message: str, query_type: str, context: dict, requ
                 messages = [
                     {
                         "role": "system",
-                        "content": """You are the SCAD GenAI Assistant specialized in Abu Dhabi spatial data analysis. 
+                        "content": """You are the IST GenAI Assistant specialized in Abu Dhabi spatial data analysis. 
 
 CRITICAL: When spatial data is provided, you MUST provide comprehensive statistical summaries with detailed breakdowns.
 
@@ -1676,7 +1676,7 @@ ATTRIBUTE ANALYSIS:
     # Handle greetings
     if query_type == 'greeting':
         return {
-            "message": "Hello! I'm the SCAD GenAI Assistant. I can help you analyze Abu Dhabi's real spatial datasets including transportation (bus stops), religious sites (mosques), recreation (parks), infrastructure (parking), and urban features (buildings). What would you like to explore?",
+            "message": "Hello! I'm the IST GenAI Assistant. I can help you analyze Abu Dhabi's real spatial datasets including transportation (bus stops), religious sites (mosques), recreation (parks), infrastructure (parking), and urban features (buildings). What would you like to explore?",
             "type": "suggestion",
             "followUpSuggestions": get_default_suggestions()
         }
@@ -2119,7 +2119,7 @@ async def get_geodatabase_layer_info(layer_name: str):
             "id": 0,
             "name": "Education Facilities (GDB)",
             "type": "Feature Layer",
-            "description": "Educational facilities from SCAD geodatabase",
+            "description": "Educational facilities from IST geodatabase",
             "geometryType": "esriGeometryPoint",
             "spatialReference": {"wkid": 4326, "latestWkid": 4326},
             "fields": [
@@ -2135,7 +2135,7 @@ async def get_geodatabase_layer_info(layer_name: str):
             "id": 0,
             "name": "Healthcare Facilities (GDB)",
             "type": "Feature Layer", 
-            "description": "Healthcare facilities from SCAD geodatabase",
+            "description": "Healthcare facilities from IST geodatabase",
             "geometryType": "esriGeometryPoint",
             "spatialReference": {"wkid": 4326, "latestWkid": 4326},
             "fields": [
@@ -2151,7 +2151,7 @@ async def get_geodatabase_layer_info(layer_name: str):
             "id": 0,
             "name": "Infrastructure (GDB)",
             "type": "Feature Layer",
-            "description": "Public infrastructure from SCAD geodatabase", 
+            "description": "Public infrastructure from IST geodatabase", 
             "geometryType": "esriGeometryPoint",
             "spatialReference": {"wkid": 4326, "latestWkid": 4326},
             "fields": [

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Document Processor Service for SCAD GenAI Data Query
+Document Processor Service for IST GenAI Data Query
 Handles OCR and text extraction from various document types
 """
 

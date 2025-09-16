@@ -1,5 +1,5 @@
 /**
- * GenAI Chatbot Service for SCAD GenAI Tool
+ * GenAI Chatbot Service for IST GenAI Tool
  * Provides intelligent conversational capabilities with context awareness
  * Now powered by ChatGPT-4o via OpenRouter
  */
@@ -35,8 +35,8 @@ export interface ChatbotQuery {
 }
 
 class GenAIChatbotService {
-  private readonly SCAD_CONTEXT = `
-    You are the SCAD GenAI Assistant, an intelligent spatial analysis chatbot for the Abu Dhabi Statistics Centre (SCAD).
+  private readonly IST_CONTEXT = `
+    You are the IST GenAI Assistant, an intelligent spatial analysis chatbot for the Abu Dhabi Statistics Centre (IST).
     
     Your capabilities include:
     - Natural language querying of real Abu Dhabi GIS datasets
@@ -161,11 +161,11 @@ class GenAIChatbotService {
     if (this.isGreeting(message)) {
       const llmResponse = await llmService.generateResponse(
         message,
-        `User is greeting the SCAD GenAI Assistant. Previous conversation: ${context.messages?.slice(-2).map((m: any) => m.content || '').filter(content => content).join(', ') || 'None'}`
+        `User is greeting the IST GenAI Assistant. Previous conversation: ${context.messages?.slice(-2).map((m: any) => m.content || '').filter(content => content).join(', ') || 'None'}`
       );
       
       return {
-        message: llmResponse.success ? llmResponse.message : `Hello! I'm the SCAD GenAI Assistant. I can help you analyze Abu Dhabi's spatial data including bus stops, mosques, parks, and other infrastructure. What would you like to explore?`,
+        message: llmResponse.success ? llmResponse.message : `Hello! I'm the IST GenAI Assistant. I can help you analyze Abu Dhabi's spatial data including bus stops, mosques, parks, and other infrastructure. What would you like to explore?`,
         type: 'suggestion',
         followUpSuggestions: conversationMemoryService.generateFollowUpSuggestions(context.sessionId)
       };
