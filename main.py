@@ -70,8 +70,8 @@ cors_origins = [
     "http://localhost:8080",  # Legacy support
     "http://localhost:5173",  # Vite default
     "https://*.onrender.com",  # Render.com deployments
-    "https://globe-esri-frontend.onrender.com",  # Your specific Render frontend domain
-    "https://globe-esri-backend.onrender.com",  # Your specific Render backend domain
+    "https://globe-view-initiate-3d-scad-1.onrender.com",  # Your actual Render frontend domain
+    "https://globe-view-initiate-3d-scad.onrender.com",  # Your actual Render backend domain
     "*"  # Allow all for development
 ]
 app.add_middleware(
