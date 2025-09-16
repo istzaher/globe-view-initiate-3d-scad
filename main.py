@@ -45,6 +45,7 @@ def get_openai_client():
     if openai_client is None:
         try:
             api_key = os.getenv("OPENROUTER_API_KEY")
+            logger.info(f"🔑 Checking for OPENROUTER_API_KEY: {'Found' if api_key else 'Not found'}")
             if api_key:
                 openai_client = openai.OpenAI(
                     api_key=api_key,
@@ -52,7 +53,8 @@ def get_openai_client():
                 )
                 logger.info("✅ OpenRouter client initialized successfully")
             else:
-                logger.warning("⚠️ OPENROUTER_API_KEY not found")
+                logger.error("❌ OPENROUTER_API_KEY not found in environment variables")
+                logger.error("❌ Please set OPENROUTER_API_KEY in your Render.com environment variables")
                 return None
         except Exception as e:
             logger.error(f"❌ Failed to initialize OpenRouter client: {e}")
@@ -550,8 +552,46 @@ def make_arcgis_request(service_url: str, params, auth_token: Optional[str] = No
 # API Routes
 @app.get("/api/health")
 async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy", "message": "Globe View 3D Backend is running"}
+    """Health check endpoint with API key status."""
+    api_key_status = "configured" if os.getenv("OPENROUTER_API_KEY") else "missing"
+    return {
+        "status": "healthy", 
+        "message": "Globe View 3D Backend is running",
+        "openrouter_api_key": api_key_status,
+        "environment": os.getenv("PYTHON_ENV", "unknown")
+    }
+
+@app.get("/api/test-genai")
+async def test_genai():
+    """Test endpoint to verify GenAI functionality."""
+    try:
+        client = get_openai_client()
+        if not client:
+            return {
+                "success": False,
+                "error": "OpenRouter API key not configured",
+                "message": "Please set OPENROUTER_API_KEY in your environment variables"
+            }
+        
+        # Test with a simple query
+        response = client.chat.completions.create(
+            model=os.getenv("OPENROUTER_MODEL", "openai/gpt-4o"),
+            messages=[{"role": "user", "content": "Hello, this is a test. Please respond with 'GenAI is working!'"}],
+            max_tokens=50,
+            temperature=0.1
+        )
+        
+        return {
+            "success": True,
+            "message": "GenAI is working!",
+            "response": response.choices[0].message.content
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "GenAI test failed"
+        }
 
 @app.get("/api/datasets")
 async def get_available_datasets():
