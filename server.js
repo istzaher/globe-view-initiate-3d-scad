@@ -18,7 +18,6 @@ app.get('*', (req, res) => {
   // Don't intercept API calls or static assets
   if (req.path.startsWith('/api') || 
       req.path.startsWith('/assets') || 
-      req.path.startsWith('/data') ||
       req.path.includes('.')) {
     console.log(`❌ Static asset or API call: ${req.path}`);
     res.status(404).send('Not Found');
