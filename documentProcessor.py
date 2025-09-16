@@ -16,8 +16,15 @@ import magic
 import pandas as pd
 import pdfplumber
 from docx import Document
-import easyocr
 from PIL import Image
+
+# Optional OCR support
+try:
+    import easyocr
+    EASYOCR_AVAILABLE = True
+except ImportError:
+    EASYOCR_AVAILABLE = False
+    easyocr = None
 
 # File type detection
 import mimetypes
@@ -52,7 +59,7 @@ class DocumentProcessor:
     
     def _init_ocr(self):
         """Lazy initialization of OCR reader."""
-        if self.ocr_reader is None:
+        if self.ocr_reader is None and EASYOCR_AVAILABLE:
             try:
                 # Initialize EasyOCR with English and Arabic support
                 self.ocr_reader = easyocr.Reader(['en', 'ar'], gpu=False)
@@ -60,6 +67,8 @@ class DocumentProcessor:
             except Exception as e:
                 logger.error(f"❌ Failed to initialize OCR: {e}")
                 self.ocr_reader = None
+        elif not EASYOCR_AVAILABLE:
+            logger.warning("⚠️ EasyOCR not available - OCR functionality disabled")
     
     def detect_file_type(self, file_path: str) -> str:
         """
