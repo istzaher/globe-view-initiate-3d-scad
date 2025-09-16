@@ -70,8 +70,8 @@ cors_origins = [
     "http://localhost:8080",  # Legacy support
     "http://localhost:5173",  # Vite default
     "https://*.onrender.com",  # Render.com deployments
-    "https://globe-view-initiate-3d-ist-1.onrender.com",  # Your actual Render frontend domain
-    "https://globe-view-initiate-3d-ist.onrender.com",  # Your actual Render backend domain
+    "https://gis-genai-ist-frontend.onrender.com",  # Your actual Render frontend domain
+    "https://gis-genai-ist-backend.onrender.com",  # Your actual Render backend domain
     "*"  # Allow all for development
 ]
 app.add_middleware(
