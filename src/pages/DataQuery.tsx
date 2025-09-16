@@ -16,6 +16,12 @@ const DataQuery = () => {
 
   // API base URL
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+  
+  // Debug: Log the API URL in development
+  if (import.meta.env.DEV) {
+    console.log('DataQuery API_BASE_URL:', API_BASE_URL);
+    console.log('Environment variables:', import.meta.env);
+  }
 
 
   // Fetch uploaded documents on component mount

@@ -205,6 +205,51 @@ def get_dataset_config(dataset_name: str):
         raise HTTPException(status_code=400, detail=f"Unknown dataset: {dataset_name}")
     return REAL_ABU_DHABI_DATASETS.get(dataset_name, {})
 
+def load_local_geojson_data(dataset_config: dict, query: str) -> dict:
+    """Load data from local GeoJSON files for real Abu Dhabi datasets."""
+    try:
+        data_file = dataset_config.get("file")
+        if not data_file:
+            logger.warning(f"No data file specified for dataset: {dataset_config['name']}")
+            return {"features": [], "spatialReference": {"wkid": 3857}}
+        
+        # Load the GeoJSON file
+        data_path = Path(__file__).parent / "public" / "data" / data_file
+        logger.info(f"Looking for data file at: {data_path}")
+        if not data_path.exists():
+            logger.warning(f"Data file not found: {data_path}")
+            # Try alternative path
+            alt_path = Path(__file__).parent / "data" / data_file
+            logger.info(f"Trying alternative path: {alt_path}")
+            if alt_path.exists():
+                data_path = alt_path
+            else:
+                return {"features": [], "spatialReference": {"wkid": 3857}}
+        
+        with open(data_path, 'r', encoding='utf-8') as f:
+            geojson_data = json.load(f)
+        
+        # Convert GeoJSON to ArcGIS format
+        features = []
+        for feature in geojson_data.get("features", []):
+            # Convert GeoJSON feature to ArcGIS format
+            arcgis_feature = {
+                "attributes": feature.get("properties", {}),
+                "geometry": feature.get("geometry", {})
+            }
+            features.append(arcgis_feature)
+        
+        logger.info(f"Loaded {len(features)} features from {data_file}")
+        
+        return {
+            "features": features,
+            "spatialReference": {"wkid": 3857}
+        }
+        
+    except Exception as e:
+        logger.error(f"Error loading local GeoJSON data: {e}")
+        return {"features": [], "spatialReference": {"wkid": 3857}}
+
 def generate_abu_dhabi_mock_data(dataset_config: dict, query: str) -> dict:
     """Generate mock Abu Dhabi data for SCAD POC demonstration."""
     import random
@@ -666,15 +711,11 @@ async def parse_query(request: QueryRequest):
             "maxRecordCount": 1000
         }
         
-        # Check if this is a real Abu Dhabi dataset (handled by frontend)
+        # Check if this is a real Abu Dhabi dataset (load from local files)
         if dataset_config.get("real_data", False):
-            logger.info(f"🏙️ Real Abu Dhabi dataset {dataset_config['name']} - handled by frontend, returning empty result")
-            # Real datasets are handled by the frontend AbuDhabiRealDataService
-            # Backend should not process these queries directly
-            arcgis_data = {
-                "features": [],
-                "spatialReference": {"wkid": 3857}
-            }
+            logger.info(f"🏙️ Loading real Abu Dhabi dataset {dataset_config['name']} from local files")
+            # Load data from local GeoJSON files
+            arcgis_data = load_local_geojson_data(dataset_config, request.query)
         elif dataset_config.get("mock_data", False):
             logger.info(f"🎭 Generating mock Abu Dhabi data for {dataset_config['name']}")
             arcgis_data = generate_abu_dhabi_mock_data(dataset_config, request.query)
@@ -2777,6 +2818,11 @@ def generate_document_chart_data(document_analysis: Dict, chart_type: str, analy
         return generate_document_chart_data(document_analysis, 'bar', analysis_type)
 
 # Serve static files
+# Serve data files
+data_dir = Path(__file__).parent / "public" / "data"
+if data_dir.exists():
+    app.mount("/data", StaticFiles(directory=data_dir), name="data")
+
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
     
