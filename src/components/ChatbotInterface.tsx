@@ -84,6 +84,7 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
     } else {
       // Generate suggestions based on visible layers
       visibleLayers.forEach(layerId => {
+        if (!layerId) return; // Skip undefined layerId values
         if (layerId.includes('education') || layerId.includes('school')) {
           suggestions.push({ question: "Find schools in Central Abu Dhabi", type: "spatial", confidence: 0.9 });
         } else if (layerId.includes('healthcare') || layerId.includes('hospital')) {

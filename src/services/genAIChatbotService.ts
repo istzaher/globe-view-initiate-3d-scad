@@ -161,7 +161,7 @@ class GenAIChatbotService {
     if (this.isGreeting(message)) {
       const llmResponse = await llmService.generateResponse(
         message,
-        `User is greeting the SCAD GenAI Assistant. Previous conversation: ${context.messages?.slice(-2).map((m: any) => m.content).join(', ') || 'None'}`
+        `User is greeting the SCAD GenAI Assistant. Previous conversation: ${context.messages?.slice(-2).map((m: any) => m.content || '').filter(content => content).join(', ') || 'None'}`
       );
       
       return {
@@ -218,7 +218,7 @@ class GenAIChatbotService {
     }
     
     // Default response for general queries using LLM
-    const conversationContext = context.messages?.slice(-3).map((m: any) => `${m.type}: ${m.content}`).join('\n') || 'No previous conversation';
+    const conversationContext = context.messages?.slice(-3).map((m: any) => `${m.type || 'unknown'}: ${m.content || ''}`).filter(line => line.trim() !== 'unknown:').join('\n') || 'No previous conversation';
     
     const llmResponse = await llmService.generateResponse(
       message,

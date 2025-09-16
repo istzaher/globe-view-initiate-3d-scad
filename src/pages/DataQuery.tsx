@@ -209,7 +209,8 @@ const DataQuery = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const getFileTypeFromMime = (mimeType: string) => {
+  const getFileTypeFromMime = (mimeType: string | undefined) => {
+    if (!mimeType) return 'File';
     if (mimeType.includes('pdf')) return 'PDF';
     if (mimeType.includes('word')) return 'Word';
     if (mimeType.includes('sheet') || mimeType.includes('excel')) return 'Excel';
