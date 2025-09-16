@@ -2297,10 +2297,26 @@ async def upload_document(file: UploadFile = File(...)):
                 error="File too large. Maximum size is 10MB."
             )
         
-        # For now, just return success without processing
+        # Store the document in memory (in production, use a database)
+        file_id = f"doc_{int(time.time())}_{hash(file.filename) % 10000}"
+        uploaded_documents[file_id] = {
+            "filename": file.filename,
+            "file_size": len(file_content),
+            "upload_time": time.time(),
+            "content": file_content,  # Store content for now
+            "processed": False,
+            "text": None,
+            "metadata": {
+                "file_type": file.content_type or "unknown",
+                "original_name": file.filename
+            }
+        }
+        
+        logger.info(f"📄 Document stored with ID: {file_id}")
+        
         return DocumentUploadResponse(
             success=True,
-            file_id=f"temp_{int(time.time())}",
+            file_id=file_id,
             filename=file.filename,
             file_size=len(file_content),
             message="File uploaded successfully. Processing will be available soon."
@@ -2507,11 +2523,21 @@ async def get_uploaded_documents():
     """Get list of uploaded documents."""
     documents = []
     for file_id, doc_data in uploaded_documents.items():
+        # Handle text preview safely
+        text_preview = ""
+        if doc_data.get('text'):
+            text_preview = doc_data['text'][:200] + "..." if len(doc_data['text']) > 200 else doc_data['text']
+        else:
+            text_preview = "Processing not available yet"
+        
         documents.append({
             'file_id': file_id,
             'filename': doc_data['filename'],
-            'metadata': doc_data['metadata'],
-            'text_preview': doc_data['text'][:200] + "..." if len(doc_data['text']) > 200 else doc_data['text']
+            'file_size': doc_data.get('file_size', 0),
+            'upload_time': doc_data.get('upload_time', 0),
+            'processed': doc_data.get('processed', False),
+            'metadata': doc_data.get('metadata', {}),
+            'text_preview': text_preview
         })
     
     return {

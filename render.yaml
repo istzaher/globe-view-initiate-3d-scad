@@ -36,10 +36,8 @@ services:
         value: 1.0.0
     autoDeploy: true
     branch: main
+    # SPA routing configuration
     routes:
-      - type: rewrite
-        source: /api/*
-        destination: /index.html
       - type: rewrite
         source: /*
         destination: /index.html
