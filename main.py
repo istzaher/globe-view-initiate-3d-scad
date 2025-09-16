@@ -895,12 +895,21 @@ async def parse_complex_scad_query(request: dict):
         
         logger.info(f"Received complex SCAD query: {query_text} for datasets: {datasets}")
         
-        # Import the enhanced parser
-        from query_parser.spacy_parser import SpacyQueryParser
-        parser = SpacyQueryParser()
-        
-        # Parse the complex query
-        complex_result = parser.parse_complex_scad_query(query_text, datasets)
+        # Import the enhanced parser (with fallback if spaCy not available)
+        try:
+            from query_parser.spacy_parser import SpacyQueryParser
+            parser = SpacyQueryParser()
+            # Parse the complex query
+            complex_result = parser.parse_complex_scad_query(query_text, datasets)
+        except ImportError as e:
+            logger.warning(f"spaCy parser not available: {e}. Using fallback parser.")
+            # Fallback to simple parsing
+            complex_result = {
+                "analysis_type": "general_analysis",
+                "suggested_datasets": datasets,
+                "query_intent": "general_query",
+                "confidence": 0.5
+            }
         
         # Determine analysis type and suggest appropriate datasets
         analysis_type = complex_result.get("analysis_type", "general_analysis")

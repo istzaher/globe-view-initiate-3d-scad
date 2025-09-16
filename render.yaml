@@ -4,7 +4,8 @@ services:
     name: globe-esri-backend
     env: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    pythonVersion: 3.11
+    buildCommand: pip install -r requirements-ultra-minimal.txt
     startCommand: python main.py
     envVars:
       - key: PYTHON_ENV
