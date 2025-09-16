@@ -16,11 +16,11 @@ pydantic>=1.8.0
 # To load environment variables (if any)
 python-dotenv>=0.19.0
 
-# NumPy (pin to 1.x for spaCy compatibility)
-numpy>=1.21.0,<2.0.0
+# NumPy (compatible with Python 3.11 and spaCy)
+numpy>=1.24.0,<2.0.0
 
 # spaCy for advanced natural language processing
-spacy>=3.4.0,<4.0.0
+spacy>=3.6.0,<4.0.0
 
 # Additional spaCy models and utilities (for transformers-based models)
 spacy-transformers>=1.1.0
@@ -50,8 +50,8 @@ openpyxl>=3.1.0
 # Image processing support for OCR
 Pillow>=10.0.0,<12.0.0
 
-# File type detection (Windows compatible) - using python-magic-bin for Python 3.11 compatibility
-python-magic-bin>=0.4.14
+# File type detection - using python-magic for better compatibility
+python-magic>=0.4.27
 
 # Additional file format support
 xlrd>=2.0.0  # For .xls files
