@@ -5,7 +5,7 @@ services:
     env: python
     plan: free
     pythonVersion: 3.11
-    buildCommand: pip install -r requirements-working.txt
+    buildCommand: pip install -r requirements.txt
     startCommand: python main.py
     envVars:
       - key: PYTHON_ENV
@@ -29,7 +29,7 @@ services:
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_BASE_URL
-        value: https://globe-esri-backend.onrender.com
+        value: https://globe-view-initiate-3d-scad.onrender.com
       - key: VITE_APP_NAME
         value: 3D World Explorer
       - key: VITE_APP_VERSION
