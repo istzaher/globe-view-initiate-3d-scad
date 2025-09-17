@@ -1,5 +1,5 @@
 /**
- * Chatbot Interface Component for SCAD GenAI Tool
+ * Chatbot Interface Component for IST GenAI Tool
  * Simplified version for debugging
  */
 
@@ -84,6 +84,7 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
     } else {
       // Generate suggestions based on visible layers
       visibleLayers.forEach(layerId => {
+        if (!layerId) return; // Skip undefined layerId values
         if (layerId.includes('education') || layerId.includes('school')) {
           suggestions.push({ question: "Find schools in Central Abu Dhabi", type: "spatial", confidence: 0.9 });
         } else if (layerId.includes('healthcare') || layerId.includes('hospital')) {
@@ -129,7 +130,7 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
     if (messages.length === 0) {
       addMessage({
         type: 'assistant',
-        content: "Hello! I'm the SCAD GenAI Assistant. I can help you analyze Abu Dhabi's spatial data using ArcGIS feature layers. Try asking about schools, hospitals, farms, police stations, or other infrastructure. What would you like to explore?",
+        content: "Hello! I'm the IST GenAI Assistant. I can help you analyze Abu Dhabi's spatial data using ArcGIS feature layers. Try asking about schools, hospitals, farms, police stations, or other infrastructure. What would you like to explore?",
         metadata: {
           queryType: 'greeting'
         }
@@ -212,7 +213,8 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
         sessionId: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       };
 
-      const response = await fetch('/api/llm-query', {
+      const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
+      const response = await fetch(`${baseUrl}/api/llm-query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)
@@ -288,7 +290,7 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
             <Sparkles className="w-4 h-4 text-white" />
           </div>
           <div>
-            <h2 className="text-white font-bold">SCAD GenAI Assistant</h2>
+            <h2 className="text-white font-bold">IST GenAI Assistant</h2>
             <p className="text-gray-200 text-xs font-medium">Abu Dhabi Spatial Analysis</p>
           </div>
         </div>

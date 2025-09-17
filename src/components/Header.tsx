@@ -18,7 +18,7 @@ const Header = () => {
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2">
               <div className="text-2xl font-bold text-blue-600">
-                SCAD GenAI
+                IST GenAI
               </div>
             </Link>
           </div>

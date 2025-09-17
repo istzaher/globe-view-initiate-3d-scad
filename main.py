@@ -45,6 +45,7 @@ def get_openai_client():
     if openai_client is None:
         try:
             api_key = os.getenv("OPENROUTER_API_KEY")
+            logger.info(f"🔑 Checking for OPENROUTER_API_KEY: {'Found' if api_key else 'Not found'}")
             if api_key:
                 openai_client = openai.OpenAI(
                     api_key=api_key,
@@ -52,7 +53,8 @@ def get_openai_client():
                 )
                 logger.info("✅ OpenRouter client initialized successfully")
             else:
-                logger.warning("⚠️ OPENROUTER_API_KEY not found")
+                logger.error("❌ OPENROUTER_API_KEY not found in environment variables")
+                logger.error("❌ Please set OPENROUTER_API_KEY in your Render.com environment variables")
                 return None
         except Exception as e:
             logger.error(f"❌ Failed to initialize OpenRouter client: {e}")
@@ -68,8 +70,8 @@ cors_origins = [
     "http://localhost:8080",  # Legacy support
     "http://localhost:5173",  # Vite default
     "https://*.onrender.com",  # Render.com deployments
-    "https://globe-esri-frontend.onrender.com",  # Your specific Render frontend domain
-    "https://globe-esri-backend.onrender.com",  # Your specific Render backend domain
+    "https://gis-genai-ist-frontend.onrender.com",  # Your actual Render frontend domain
+    "https://gis-genai-ist-backend.onrender.com",  # Your actual Render backend domain
     "*"  # Allow all for development
 ]
 app.add_middleware(
@@ -132,7 +134,7 @@ class ChatbotRequest(BaseModel):
     conversation: Optional[List[Dict[str, str]]] = []
     spatialContext: Optional[Dict[str, Any]] = None
 
-# SCAD GenAI Tool - Real Abu Dhabi datasets configuration
+# IST GenAI Tool - Real Abu Dhabi datasets configuration
 # Real spatial datasets loaded from public/data/ via frontend
 REAL_ABU_DHABI_DATASETS = {
     # REAL ABU DHABI DATASETS - Loaded from public/data/ via frontend
@@ -203,8 +205,53 @@ def get_dataset_config(dataset_name: str):
         raise HTTPException(status_code=400, detail=f"Unknown dataset: {dataset_name}")
     return REAL_ABU_DHABI_DATASETS.get(dataset_name, {})
 
+def load_local_geojson_data(dataset_config: dict, query: str) -> dict:
+    """Load data from local GeoJSON files for real Abu Dhabi datasets."""
+    try:
+        data_file = dataset_config.get("file")
+        if not data_file:
+            logger.warning(f"No data file specified for dataset: {dataset_config['name']}")
+            return {"features": [], "spatialReference": {"wkid": 3857}}
+        
+        # Load the GeoJSON file
+        data_path = Path(__file__).parent / "public" / "data" / data_file
+        logger.info(f"Looking for data file at: {data_path}")
+        if not data_path.exists():
+            logger.warning(f"Data file not found: {data_path}")
+            # Try alternative path
+            alt_path = Path(__file__).parent / "data" / data_file
+            logger.info(f"Trying alternative path: {alt_path}")
+            if alt_path.exists():
+                data_path = alt_path
+            else:
+                return {"features": [], "spatialReference": {"wkid": 3857}}
+        
+        with open(data_path, 'r', encoding='utf-8') as f:
+            geojson_data = json.load(f)
+        
+        # Convert GeoJSON to ArcGIS format
+        features = []
+        for feature in geojson_data.get("features", []):
+            # Convert GeoJSON feature to ArcGIS format
+            arcgis_feature = {
+                "attributes": feature.get("properties", {}),
+                "geometry": feature.get("geometry", {})
+            }
+            features.append(arcgis_feature)
+        
+        logger.info(f"Loaded {len(features)} features from {data_file}")
+        
+        return {
+            "features": features,
+            "spatialReference": {"wkid": 3857}
+        }
+        
+    except Exception as e:
+        logger.error(f"Error loading local GeoJSON data: {e}")
+        return {"features": [], "spatialReference": {"wkid": 3857}}
+
 def generate_abu_dhabi_mock_data(dataset_config: dict, query: str) -> dict:
-    """Generate mock Abu Dhabi data for SCAD POC demonstration."""
+    """Generate mock Abu Dhabi data for IST POC demonstration."""
     import random
     import time
     
@@ -306,7 +353,7 @@ def parse_simple_query(query: str, dataset: str) -> str:
     query_lower = query.lower()
     logger.info(f"Parsing query: '{query_lower}' for dataset: {dataset}")
     
-    # Dataset-specific mappings for SCAD Abu Dhabi datasets
+    # Dataset-specific mappings for IST Abu Dhabi datasets
     if dataset.startswith('education'):
         # Education specific mappings
         education_mappings = {
@@ -550,8 +597,46 @@ def make_arcgis_request(service_url: str, params, auth_token: Optional[str] = No
 # API Routes
 @app.get("/api/health")
 async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy", "message": "Globe View 3D Backend is running"}
+    """Health check endpoint with API key status."""
+    api_key_status = "configured" if os.getenv("OPENROUTER_API_KEY") else "missing"
+    return {
+        "status": "healthy", 
+        "message": "Globe View 3D Backend is running",
+        "openrouter_api_key": api_key_status,
+        "environment": os.getenv("PYTHON_ENV", "unknown")
+    }
+
+@app.get("/api/test-genai")
+async def test_genai():
+    """Test endpoint to verify GenAI functionality."""
+    try:
+        client = get_openai_client()
+        if not client:
+            return {
+                "success": False,
+                "error": "OpenRouter API key not configured",
+                "message": "Please set OPENROUTER_API_KEY in your environment variables"
+            }
+        
+        # Test with a simple query
+        response = client.chat.completions.create(
+            model=os.getenv("OPENROUTER_MODEL", "openai/gpt-4o"),
+            messages=[{"role": "user", "content": "Hello, this is a test. Please respond with 'GenAI is working!'"}],
+            max_tokens=50,
+            temperature=0.1
+        )
+        
+        return {
+            "success": True,
+            "message": "GenAI is working!",
+            "response": response.choices[0].message.content
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "GenAI test failed"
+        }
 
 @app.get("/api/datasets")
 async def get_available_datasets():
@@ -626,15 +711,11 @@ async def parse_query(request: QueryRequest):
             "maxRecordCount": 1000
         }
         
-        # Check if this is a real Abu Dhabi dataset (handled by frontend)
+        # Check if this is a real Abu Dhabi dataset (load from local files)
         if dataset_config.get("real_data", False):
-            logger.info(f"🏙️ Real Abu Dhabi dataset {dataset_config['name']} - handled by frontend, returning empty result")
-            # Real datasets are handled by the frontend AbuDhabiRealDataService
-            # Backend should not process these queries directly
-            arcgis_data = {
-                "features": [],
-                "spatialReference": {"wkid": 3857}
-            }
+            logger.info(f"🏙️ Loading real Abu Dhabi dataset {dataset_config['name']} from local files")
+            # Load data from local GeoJSON files
+            arcgis_data = load_local_geojson_data(dataset_config, request.query)
         elif dataset_config.get("mock_data", False):
             logger.info(f"🎭 Generating mock Abu Dhabi data for {dataset_config['name']}")
             arcgis_data = generate_abu_dhabi_mock_data(dataset_config, request.query)
@@ -886,21 +967,21 @@ async def parse_enhanced_query(request: dict):
         }
 
 @app.post("/api/parse-complex")
-async def parse_complex_scad_query(request: dict):
-    """Parse complex SCAD queries with advanced spatial analysis capabilities."""
+async def parse_complex_ist_query(request: dict):
+    """Parse complex IST queries with advanced spatial analysis capabilities."""
     try:
         start_time = time.time()
         query_text = request.get("query", "")
         datasets = request.get("datasets", [])
         
-        logger.info(f"Received complex SCAD query: {query_text} for datasets: {datasets}")
+        logger.info(f"Received complex IST query: {query_text} for datasets: {datasets}")
         
         # Import the enhanced parser (with fallback if spaCy not available)
         try:
             from query_parser.spacy_parser import SpacyQueryParser
             parser = SpacyQueryParser()
             # Parse the complex query
-            complex_result = parser.parse_complex_scad_query(query_text, datasets)
+            complex_result = parser.parse_complex_ist_query(query_text, datasets)
         except ImportError as e:
             logger.warning(f"spaCy parser not available: {e}. Using fallback parser.")
             # Fallback to simple parsing
@@ -1007,7 +1088,7 @@ async def parse_complex_scad_query(request: dict):
         }
         
     except Exception as e:
-        logger.error(f"Complex SCAD query processing failed: {str(e)}")
+        logger.error(f"Complex IST query processing failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Complex query processing failed: {str(e)}")
 
 # Chatbot endpoints for GenAI conversation
@@ -1082,7 +1163,7 @@ async def llm_only_query(request: ChatbotRequest):
             )
         
         # Build LLM prompt with data
-        system_prompt = """You are the SCAD GenAI Assistant for Abu Dhabi spatial data analysis. 
+        system_prompt = """You are the IST GenAI Assistant for Abu Dhabi spatial data analysis. 
 
 You have direct access to real Abu Dhabi datasets and their analysis results. When provided with data analysis, you MUST:
 
@@ -1300,10 +1381,10 @@ async def generate_llm_response(request: LLMRequest):
                 "content": request.systemPrompt
             })
         else:
-            # Default SCAD system prompt
+            # Default IST system prompt
             messages.append({
                 "role": "system", 
-                "content": """You are the SCAD GenAI Assistant for Abu Dhabi Statistics Centre.
+                "content": """You are the IST GenAI Assistant for Abu Dhabi Statistics Centre.
                 
 You specialize in:
 - Abu Dhabi GIS and spatial data analysis with detailed statistics
@@ -1499,7 +1580,7 @@ def generate_chatbot_response(message: str, query_type: str, context: dict, requ
                 messages = [
                     {
                         "role": "system",
-                        "content": """You are the SCAD GenAI Assistant specialized in Abu Dhabi spatial data analysis. 
+                        "content": """You are the IST GenAI Assistant specialized in Abu Dhabi spatial data analysis. 
 
 CRITICAL: When spatial data is provided, you MUST provide comprehensive statistical summaries with detailed breakdowns.
 
@@ -1595,7 +1676,7 @@ ATTRIBUTE ANALYSIS:
     # Handle greetings
     if query_type == 'greeting':
         return {
-            "message": "Hello! I'm the SCAD GenAI Assistant. I can help you analyze Abu Dhabi's real spatial datasets including transportation (bus stops), religious sites (mosques), recreation (parks), infrastructure (parking), and urban features (buildings). What would you like to explore?",
+            "message": "Hello! I'm the IST GenAI Assistant. I can help you analyze Abu Dhabi's real spatial datasets including transportation (bus stops), religious sites (mosques), recreation (parks), infrastructure (parking), and urban features (buildings). What would you like to explore?",
             "type": "suggestion",
             "followUpSuggestions": get_default_suggestions()
         }
@@ -2038,7 +2119,7 @@ async def get_geodatabase_layer_info(layer_name: str):
             "id": 0,
             "name": "Education Facilities (GDB)",
             "type": "Feature Layer",
-            "description": "Educational facilities from SCAD geodatabase",
+            "description": "Educational facilities from IST geodatabase",
             "geometryType": "esriGeometryPoint",
             "spatialReference": {"wkid": 4326, "latestWkid": 4326},
             "fields": [
@@ -2054,7 +2135,7 @@ async def get_geodatabase_layer_info(layer_name: str):
             "id": 0,
             "name": "Healthcare Facilities (GDB)",
             "type": "Feature Layer", 
-            "description": "Healthcare facilities from SCAD geodatabase",
+            "description": "Healthcare facilities from IST geodatabase",
             "geometryType": "esriGeometryPoint",
             "spatialReference": {"wkid": 4326, "latestWkid": 4326},
             "fields": [
@@ -2070,7 +2151,7 @@ async def get_geodatabase_layer_info(layer_name: str):
             "id": 0,
             "name": "Infrastructure (GDB)",
             "type": "Feature Layer",
-            "description": "Public infrastructure from SCAD geodatabase", 
+            "description": "Public infrastructure from IST geodatabase", 
             "geometryType": "esriGeometryPoint",
             "spatialReference": {"wkid": 4326, "latestWkid": 4326},
             "fields": [
@@ -2203,6 +2284,75 @@ async def upload_document(file: UploadFile = File(...)):
     Supports PDF, Word, Excel, CSV, and image files.
     """
     try:
+        # For now, return a simple success response without processing
+        # This allows the upload to work while we fix the document processor
+        logger.info(f"📄 Document upload received: {file.filename}")
+        
+        # Validate file size (10MB limit)
+        max_size = 10 * 1024 * 1024  # 10MB
+        file_content = await file.read()
+        if len(file_content) > max_size:
+            return DocumentUploadResponse(
+                success=False,
+                error="File too large. Maximum size is 10MB."
+            )
+        
+        # Store the document in memory (in production, use a database)
+        file_id = f"doc_{int(time.time())}_{hash(file.filename) % 10000}"
+        
+        # Try to process the document if processor is available
+        processed_text = None
+        processing_success = False
+        
+        if document_processor:
+            try:
+                logger.info(f"📄 Processing document: {file.filename}")
+                # Create a temporary file for processing
+                with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as temp_file:
+                    temp_file.write(file_content)
+                    temp_file_path = temp_file.name
+                
+                # Process the document
+                result = document_processor.process_document(temp_file_path)
+                if result and result.get('success'):
+                    processed_text = result.get('text', '')
+                    processing_success = True
+                    logger.info(f"✅ Document processed successfully: {len(processed_text)} characters extracted")
+                else:
+                    logger.warning(f"⚠️ Document processing failed: {result.get('error', 'Unknown error')}")
+                
+                # Clean up temporary file
+                os.unlink(temp_file_path)
+                
+            except Exception as e:
+                logger.error(f"❌ Error processing document: {e}")
+        else:
+            logger.warning("⚠️ Document processor not available - storing without processing")
+        
+        uploaded_documents[file_id] = {
+            "filename": file.filename,
+            "file_size": len(file_content),
+            "upload_time": time.time(),
+            "content": file_content,  # Store content for now
+            "processed": processing_success,
+            "text": processed_text,
+            "metadata": {
+                "file_type": file.content_type or "unknown",
+                "original_name": file.filename
+            }
+        }
+        
+        logger.info(f"📄 Document stored with ID: {file_id}")
+        
+        return DocumentUploadResponse(
+            success=True,
+            file_id=file_id,
+            filename=file.filename,
+            file_size=len(file_content),
+            message="File uploaded successfully." + (" Text extracted." if processing_success else " Processing not available.")
+        )
+        
+        # TODO: Re-enable document processing once dependencies are fixed
         if not document_processor:
             return DocumentUploadResponse(
                 success=False,
@@ -2403,11 +2553,21 @@ async def get_uploaded_documents():
     """Get list of uploaded documents."""
     documents = []
     for file_id, doc_data in uploaded_documents.items():
+        # Handle text preview safely
+        text_preview = ""
+        if doc_data.get('text'):
+            text_preview = doc_data['text'][:200] + "..." if len(doc_data['text']) > 200 else doc_data['text']
+        else:
+            text_preview = "Processing not available yet"
+        
         documents.append({
             'file_id': file_id,
             'filename': doc_data['filename'],
-            'metadata': doc_data['metadata'],
-            'text_preview': doc_data['text'][:200] + "..." if len(doc_data['text']) > 200 else doc_data['text']
+            'file_size': doc_data.get('file_size', 0),
+            'upload_time': doc_data.get('upload_time', 0),
+            'processed': doc_data.get('processed', False),
+            'metadata': doc_data.get('metadata', {}),
+            'text_preview': text_preview
         })
     
     return {
@@ -2737,6 +2897,11 @@ def generate_document_chart_data(document_analysis: Dict, chart_type: str, analy
         return generate_document_chart_data(document_analysis, 'bar', analysis_type)
 
 # Serve static files
+# Serve data files
+data_dir = Path(__file__).parent / "public" / "data"
+if data_dir.exists():
+    app.mount("/data", StaticFiles(directory=data_dir), name="data")
+
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
     

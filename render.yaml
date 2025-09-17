@@ -1,11 +1,11 @@
 services:
   # Backend Service (FastAPI)
   - type: web
-    name: globe-esri-backend
+    name: gis-genai-ist-backend
     env: python
     plan: free
     pythonVersion: 3.11
-    buildCommand: pip install -r requirements-ultra-minimal.txt
+    buildCommand: pip install -r requirements.txt
     startCommand: python main.py
     envVars:
       - key: PYTHON_ENV
@@ -16,27 +16,25 @@ services:
         value: 0.0.0.0
       - key: OPENROUTER_API_KEY
         sync: false  # Set this in Render dashboard
-    healthCheckPath: /health
+    healthCheckPath: /api/health
     autoDeploy: true
     branch: main
 
-  # Frontend Service (Static Site)
+  # Frontend Service (Node.js Web Service)
   - type: web
-    name: globe-esri-frontend
-    env: static
+    name: gis-genai-ist-frontend
+    env: node
     plan: free
     buildCommand: npm install && npm run build
-    staticPublishPath: ./dist
+    startCommand: npm run serve
     envVars:
       - key: VITE_API_BASE_URL
-        value: https://globe-esri-backend.onrender.com
+        value: https://gis-genai-ist-backend.onrender.com
       - key: VITE_APP_NAME
-        value: 3D World Explorer
+        value: GIS GenAI IST
       - key: VITE_APP_VERSION
         value: 1.0.0
+      - key: PORT
+        value: 3000
     autoDeploy: true
     branch: main
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html

@@ -82,7 +82,7 @@ This guide will help you deploy the 3D World Explorer application on Vercel with
    ```python
    cors_origins = [
        "https://your-frontend-name.vercel.app",
-       "https://globe-esri-scad.vercel.app",
+       "https://globe-esri-ist.vercel.app",
        # ... other origins
    ]
    ```

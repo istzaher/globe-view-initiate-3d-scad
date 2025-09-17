@@ -1,6 +1,6 @@
-# SCAD GenAI Tool - AI-Powered Spatial Analysis Assistant
+# IST GenAI Tool - AI-Powered Spatial Analysis Assistant
 
-A sophisticated GenAI-powered application for natural language interaction with GIS and spatial datasets, specifically designed for SCAD (Statistics Centre - Abu Dhabi) infrastructure analysis and spatial intelligence.
+A sophisticated GenAI-powered application for natural language interaction with GIS and spatial datasets, specifically designed for IST (Statistics Centre - Abu Dhabi) infrastructure analysis and spatial intelligence.
 
 ## 🎯 Project Overview
 
@@ -215,7 +215,7 @@ PORT=8000
 VITE_API_BASE_URL=https://your-backend-api.com
 ```
 
-## 🎯 SCAD Integration Roadmap
+## 🎯 IST Integration Roadmap
 
 ### Current POC Features ✅
 - Natural language query processing
@@ -225,7 +225,7 @@ VITE_API_BASE_URL=https://your-backend-api.com
 - GenAI chatbot with memory
 
 ### Future Integration Points 🔄
-- **SCAD Esri Enterprise** connectivity
+- **IST Esri Enterprise** connectivity
 - **Bayaan** dataset integration
 - **Abu Dhabi District Pulse** livability indicators
 - **Tbyaan** platform integration
@@ -268,7 +268,7 @@ taskkill /PID [process_id] /F
 
 ## 📄 License
 
-This project is developed for SCAD (Statistics Centre - Abu Dhabi) as a proof of concept for GenAI-powered spatial analysis capabilities.
+This project is developed for IST (Statistics Centre - Abu Dhabi) as a proof of concept for GenAI-powered spatial analysis capabilities.
 
 ## 🤝 Support
 
@@ -280,4 +280,4 @@ For technical issues and questions:
 
 ---
 
-**Built with ❤️ for SCAD's spatial intelligence and urban planning initiatives in Abu Dhabi** 🇦🇪
+**Built with ❤️ for IST's spatial intelligence and urban planning initiatives in Abu Dhabi** 🇦🇪

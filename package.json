@@ -11,6 +11,7 @@
     "build:render": "npm install && npm run build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "serve": "node server.js",
     "start": "python main.py",
     "deploy": "powershell -ExecutionPolicy Bypass -File deploy-render.ps1",
     "deploy:check": "npm run build && echo 'Build successful - ready for deployment'",
@@ -20,6 +21,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
+    "express": "^4.18.2",
     "@popperjs/core": "^2.11.8",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.1",

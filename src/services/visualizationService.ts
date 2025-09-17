@@ -64,7 +64,7 @@ export interface VisualizationRequest {
 export class VisualizationService {
   private apiBaseUrl: string;
 
-  constructor(apiBaseUrl: string = 'http://localhost:8000') {
+  constructor(apiBaseUrl: string = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000') {
     this.apiBaseUrl = apiBaseUrl;
   }
 

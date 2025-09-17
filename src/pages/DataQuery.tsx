@@ -15,7 +15,13 @@ const DataQuery = () => {
   const { toast } = useToast();
 
   // API base URL
-  const API_BASE_URL = 'http://localhost:8000';
+  const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
+  
+  // Debug: Log the API URL in development
+  if (import.meta.env.DEV) {
+    console.log('DataQuery API_BASE_URL:', API_BASE_URL);
+    console.log('Environment variables:', import.meta.env);
+  }
 
 
   // Fetch uploaded documents on component mount
@@ -203,7 +209,8 @@ const DataQuery = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const getFileTypeFromMime = (mimeType: string) => {
+  const getFileTypeFromMime = (mimeType: string | undefined) => {
+    if (!mimeType) return 'File';
     if (mimeType.includes('pdf')) return 'PDF';
     if (mimeType.includes('word')) return 'Word';
     if (mimeType.includes('sheet') || mimeType.includes('excel')) return 'Excel';
@@ -298,7 +305,7 @@ const DataQuery = () => {
                         <div>
                           <p className="font-medium text-gray-900">{doc.filename}</p>
                           <p className="text-sm text-gray-500">
-                            {formatFileSize(doc.metadata?.file_size || 0)} • {new Date(doc.metadata?.upload_time * 1000).toLocaleDateString()}
+                            {formatFileSize(doc.file_size || 0)} • {new Date((doc.upload_time || 0) * 1000).toLocaleDateString()}
                           </p>
                         </div>
                       </div>

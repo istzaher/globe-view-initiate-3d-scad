@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
-    // Ensure proper asset references
+    // Ensure proper asset references and client-side routing
     rollupOptions: {
       output: {
         manualChunks: undefined,

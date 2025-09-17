@@ -19,11 +19,11 @@ python-dotenv>=0.19.0
 # NumPy (compatible with Python 3.11 and spaCy)
 numpy>=1.24.0,<2.0.0
 
-# spaCy for advanced natural language processing
-spacy>=3.6.0,<4.0.0
+# spaCy for advanced natural language processing (temporarily disabled due to blis build issues)
+# spacy>=3.6.0,<4.0.0
 
-# Additional spaCy models and utilities (for transformers-based models)
-spacy-transformers>=1.1.0
+# Additional spaCy models and utilities (temporarily disabled)
+# spacy-transformers>=1.1.0
 
 # Additional dependencies for proper functionality
 typing-extensions>=4.0.0
@@ -56,4 +56,4 @@ python-magic>=0.4.27
 # Additional file format support
 xlrd>=2.0.0  # For .xls files
 python-multipart>=0.0.6  # For file uploads in FastAPI
-PyMuPDF>=1.23.0  # For PDF to image conversion (OCR fallback) 
+# PyMuPDF>=1.23.0  # For PDF to image conversion (OCR fallback) - commented out due to build issues 

@@ -1,5 +1,5 @@
 /**
- * LLM Service for SCAD GenAI Tool
+ * LLM Service for IST GenAI Tool
  * Integrates OpenRouter ChatGPT-4o for intelligent responses
  */
 
@@ -34,7 +34,8 @@ export class LLMService {
       console.log(`🧠 Generating LLM response for: "${message}"`);
 
       // Call backend endpoint that securely handles OpenRouter API
-      const response = await fetch('/api/llm/generate', {
+      const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
+      const response = await fetch(`${baseUrl}/api/llm/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,7 +80,7 @@ export class LLMService {
       location?: string;
     }
   ): Promise<LLMResponse> {
-    const systemPrompt = `You are the SCAD GenAI Assistant for Abu Dhabi Statistics Centre. 
+    const systemPrompt = `You are the IST GenAI Assistant for Abu Dhabi Statistics Centre. 
     You specialize in spatial analysis and GIS data interpretation for Abu Dhabi, UAE.
     
     Current spatial context:
@@ -94,10 +95,10 @@ export class LLMService {
   }
 
   /**
-   * Default system prompt for SCAD GenAI Tool
+   * Default system prompt for IST GenAI Tool
    */
   private getDefaultSystemPrompt(): string {
-    return `You are the SCAD GenAI Assistant, an AI-powered spatial analysis assistant for the Abu Dhabi Statistics Centre (SCAD).
+    return `You are the IST GenAI Assistant, an AI-powered spatial analysis assistant for the Abu Dhabi Statistics Centre (IST).
 
 Your expertise includes:
 - Abu Dhabi geographic information systems (GIS)
